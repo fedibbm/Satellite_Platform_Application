@@ -1,0 +1,71 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.log
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Byte-compiled / optimized / DLL files
+*.so
+
+# -------------------------
+# Docker
+# -------------------------
+# Ignore build artifacts and caches
+docker-data/
+docker-volume/
+*.tar
+
+# -------------------------
+# Output / Generated files
+# -------------------------
+output/
+test_output.png
+*.png
+*.tif
+
+# -------------------------
+# Logs
+# -------------------------
+app.log
+*.log
+
+# -------------------------
+# OS / Editor files
+# -------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# -------------------------
+# Scripts / temporary files
+# -------------------------
+example.sh
+*.tmp
+*.bak
+
+# -------------------------
+# Node (if accidentally used)
+# -------------------------
+node_modules/
+package-lock.json
+
+# -------------------------
+# Sensitive / credentials
+# -------------------------
+# Uncomment if you have any Google Earth Engine or cloud keys
+# *.json
+

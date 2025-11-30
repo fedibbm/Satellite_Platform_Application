@@ -1,0 +1,75 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.log
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Byte-compiled / optimized / DLL files
+*.so
+
+# -------------------------
+# Node (package-lock.json exists)
+# -------------------------
+node_modules/
+
+# -------------------------
+# OS / Editor files
+# -------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# -------------------------
+# Docker
+# -------------------------
+# Ignore build artifacts
+docker-data/
+docker-volume/
+*.tar
+
+# -------------------------
+# Logs
+# -------------------------
+logs/
+app.log
+
+# -------------------------
+# Temp files
+# -------------------------
+tmp/
+*.tmp
+
+# -------------------------
+# Earth Engine / Cloud credentials
+# (HIGHLY recommended to ignore)
+# -------------------------
+*.json
+!request.json
+# If you want to KEEP some JSON files, un-ignore like this:
+# !request.json
+
+# -------------------------
+# Tests
+# -------------------------
+# Exclude generated test artifacts
+tests/*.tmp
+tests/*.log
+
+# -------------------------
+# Scripts output
+# -------------------------
+*.out
+*.bak
+

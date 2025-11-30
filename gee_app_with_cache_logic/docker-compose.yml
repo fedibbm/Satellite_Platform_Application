@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  gee_app:
+    build: .
+    container_name: gee_app
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    restart: unless-stopped
