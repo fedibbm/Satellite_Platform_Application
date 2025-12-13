@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { projectsService } from '@/services/projects.service';
+import { PROJECT_ENDPOINTS } from '@/config/api';
 
 export default function NewProjectPage() {
     const router = useRouter();
@@ -37,6 +38,8 @@ export default function NewProjectPage() {
             setLoading(false);
         }
     };
+
+  
 
     return (
         <div className="container mx-auto px-4 py-8">

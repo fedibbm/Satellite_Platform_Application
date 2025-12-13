@@ -1,131 +1,82 @@
 'use client'
 
-import { AppBar, Toolbar, Typography, Box } from '@mui/material'; // Added Box
+import { AppBar, Toolbar, Typography, Box, ButtonBase } from '@mui/material';
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
-import { authService } from '../services/auth.service'
-import { useAuth } from '../hooks/useAuth'; // Import useAuth
-import AccountCircle from '@mui/icons-material/AccountCircle'; // Import AccountCircle icon
+import { useAuth } from '../hooks/useAuth';
+import AccountCircle from '@mui/icons-material/AccountCircle';
 
 interface HeaderProps {
   title: string;
 }
 
 export default function Header({ title }: HeaderProps) {
-  // Use useAuth hook to get user details when available
-  const { user, loading: authLoading } = useAuth();
-  // Local state for immediate auth check and polling updates
-  // Initialize isLoggedIn based on client-side check after mount
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Default to false initially
+  const { user, logout, isLoggedIn } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [hasMounted, setHasMounted] = useState(false); // State to track client mount
 
-  useEffect(() => {
-    // Set mounted state on client
-    setHasMounted(true);
+ 
 
-    // Perform initial auth check only on the client after mount
-    setIsLoggedIn(authService.isAuthenticated());
+  const handleLogout = () => {
+    alert("logged out");
+    logout();
+  }
 
-    let intervalId: NodeJS.Timeout | null = null;
-
-    // Function to check auth status
-    const checkAuth = () => {
-      const currentAuthStatus = authService.isAuthenticated();
-      setIsLoggedIn(currentAuthStatus);
-      if (currentAuthStatus && intervalId) {
-        // If authenticated, stop polling
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-    };
-
-    // Initial check
-    checkAuth();
-
-    // Start polling only if not logged in initially
-    if (!isLoggedIn) {
-      intervalId = setInterval(checkAuth, 5000); // Poll every 5 seconds
-    }
-
-    // Cleanup interval on component unmount
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [isLoggedIn]); // Re-run effect if isLoggedIn changes (to stop polling)
-
-  // Removed conflicting useEffect block that was commented out previously
+  const loggedIn =  isLoggedIn(); // boolean for convenience
 
   return (
     <AppBar position="static">
       <Toolbar className="justify-between">
         {/* Logo and App Name */}
-        <div className="flex items-center">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="relative w-10 h-10">
-              <Image
-                src="/images/logo.png"
-                alt="SatelliteIP Logo"
-                fill
-                sizes="(max-width: 640px) 40px, 40px"
-                priority
-                className="object-contain"
-              />
-            </div>
-            <span className="text-xl font-bold text-white">SatelliteIP</span>
-          </Link>
-        </div>
+        <Link href="/" className="flex items-center space-x-2">
+          <div className="relative w-10 h-10">
+            <Image
+              src="/images/logo.png"
+              alt="SatelliteIP Logo"
+              fill
+              sizes="(max-width: 640px) 40px, 40px"
+              priority
+              className="object-contain"
+            />
+          </div>
+          <span className="text-xl font-bold text-white">SatelliteIP</span>
+        </Link>
 
-        {/* Removed the Typography element that displayed the title prop */}
-        {/* <Typography variant="h6">{title}</Typography> */}
-
-        {/* Navigation items pushed to the right */}
+        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8 ml-auto">
-          <Link
-            href="/"
-            className="text-white hover:text-blue-200 transition-colors"
-          >
+          <Link href="/" className="text-white hover:text-blue-200 transition-colors">
             Home
           </Link>
-          <Link
-            href="/dashboard"
-            className="text-white hover:text-blue-200 transition-colors"
-          >
+          <Link href="/dashboard" className="text-white hover:text-blue-200 transition-colors">
             Dashboard
           </Link>
-          {/* Auth status - Render only after client mount to prevent hydration errors */}
-          {hasMounted && (
-            isLoggedIn ? (
-              // User is logged in, display generic status
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <AccountCircle sx={{ color: 'white' }} />
-                <Typography variant="body1" sx={{ color: 'white' }}>
-                  Logged In
-                </Typography>
-              </Box>
-            ) : ( // This is the ':' for the outer ternary (isLoggedIn ? ... : ...)
-            // User is not logged in
+
+          {loggedIn ? (
+            <ButtonBase
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                '&:hover': {
+                  cursor: 'pointer'
+                }
+              }}
+              onClick={handleLogout}
+            >
+              <AccountCircle sx={{ color: 'white' }} />
+              <Typography variant="body1" sx={{ color: 'white' }}>
+                Logged In
+              </Typography>
+            </ButtonBase>
+          ) : (
             <Link
               href="/auth/login"
               className="text-white hover:text-blue-200 transition-colors"
-            // Removed the erroneous extra colon and misplaced Link block below
-            // ) : (
-            //   // User is not logged in
-            //   <Link
-            //     href="/auth/login"
-            //     className="text-white hover:text-blue-200 transition-colors"
             >
               Sign In
             </Link>
-            )
           )}
-          {/* Placeholder during SSR / before mount */}
-          {!hasMounted && <span className="text-white opacity-0">Sign In</span>}
         </nav>
-        {/* Removed duplicated nav content here */}
 
         {/* Mobile menu button */}
         <div className="md:hidden">
@@ -152,13 +103,8 @@ export default function Header({ title }: HeaderProps) {
         </div>
       </Toolbar>
 
-      {/* Mobile menu */}
-      <div
-        className={`${
-          isMobileMenuOpen ? 'block' : 'hidden'
-        } md:hidden absolute top-full left-0 w-full bg-gray-800 shadow-lg`}
-        id="mobile-menu"
-      >
+      {/* Mobile Menu */}
+      <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:hidden absolute top-full left-0 w-full bg-gray-800 shadow-lg`}>
         <div className="px-2 pt-2 pb-3 space-y-1">
           <Link
             href="/"
@@ -172,36 +118,34 @@ export default function Header({ title }: HeaderProps) {
           >
             Dashboard
           </Link>
-          {/* Conditional rendering for mobile menu - Render only after client mount */}
-          {hasMounted && (
-            isLoggedIn ? (
-              // User is logged in, display generic status in mobile menu
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 3, py: 2 }}>
-                <AccountCircle sx={{ color: 'white' }} />
-                <Typography variant="body1" sx={{ color: 'white' }}>
-                  Logged In
-                </Typography>
-              </Box>
-            ) : ( // This is the ':' for the outer ternary (isLoggedIn ? ... : ...)
-            // User is not logged in
+
+          {loggedIn ? (
+            <ButtonBase
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 3,
+                py: 2,
+                '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)', cursor: 'pointer' }
+              }}
+              onClick={handleLogout}
+            >
+              <AccountCircle sx={{ color: 'white' }} />
+              <Typography variant="body1" sx={{ color: 'white' }}>
+                Logged In
+              </Typography>
+            </ButtonBase>
+          ) : (
             <Link
               href="/auth/login"
               className="block px-3 py-2 rounded-md text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
-            // Removed the erroneous extra colon and misplaced Link block below
-            // ) : (
-            //   <Link
-            //     href="/auth/login"
-            //     className="block px-3 py-2 rounded-md text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
             >
               Sign In
             </Link>
-            )
           )}
-          {/* Placeholder during SSR / before mount */}
-          {!hasMounted && <span className="block px-3 py-2 rounded-md text-white opacity-0">Sign In</span>}
         </div>
       </div>
-      {/* Removed duplicated mobile menu content here */}
     </AppBar>
-  ); // Ensure single return and correct closing
+  );
 }
