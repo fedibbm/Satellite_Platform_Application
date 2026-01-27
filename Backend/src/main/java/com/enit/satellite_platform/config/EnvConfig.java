@@ -16,9 +16,21 @@ public class EnvConfig {
 
     @PostConstruct
     public void loadEnv() {
-        Dotenv dotenv = Dotenv.configure().load();
-        dotenv.entries().forEach(entry -> {
-            System.setProperty(entry.getKey(), entry.getValue());
-        });
+        try {
+            Dotenv dotenv = Dotenv.configure()
+                    .ignoreIfMissing()
+                    .ignoreIfMalformed()
+                    .load();
+            
+            if (dotenv != null) {
+                dotenv.entries().forEach(entry -> {
+                    System.setProperty(entry.getKey(), entry.getValue());
+                });
+                System.out.println("Loaded environment variables from .env file");
+            }
+        } catch (Exception e) {
+            // .env file is optional, environment variables can be set directly
+            System.out.println("No .env file found, using environment variables directly: " + e.getMessage());
+        }
     }
 }

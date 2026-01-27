@@ -2,6 +2,11 @@
 app.log
 start_backend.ps1
 
+# Docker logs
+docker-build.log
+docker-compose.log
+*.log
+
 # Added entries
 
 # Backend (Maven/Java)

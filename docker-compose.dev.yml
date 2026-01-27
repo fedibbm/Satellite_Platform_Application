@@ -1,0 +1,37 @@
+# Development docker-compose override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+    volumes:
+      - ./Backend/src:/app/src:ro
+      - ./Backend/logs:/app/logs
+    command: sh -c "mvn spring-boot:run"
+
+  gee-service:
+    volumes:
+      - ./gee_app_with_cache_logic:/app
+    command: python app.py --reload
+
+  image-processing-app:
+    volumes:
+      - ./image_porcessing/app:/app
+    command: uvicorn REST_API_version2:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./FrontEnd
+      dockerfile: Dockerfile
+    volumes:
+      - ./FrontEnd/src:/app/src:ro
+      - ./FrontEnd/public:/app/public:ro
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
