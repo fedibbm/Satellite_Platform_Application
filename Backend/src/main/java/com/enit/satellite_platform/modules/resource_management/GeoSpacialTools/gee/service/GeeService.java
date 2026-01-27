@@ -81,7 +81,7 @@ public class GeeService {
 
         // Process request if not found in cache
         logger.info("Processing GEE request (cache miss for key: {})", cacheKey);
-        String endpoint = flaskBaseUrl + request.getServiceType();
+        String endpoint = flaskBaseUrl + "/gee/" + request.getServiceType();
         ProcessingResponse response = sendPostRequest(endpoint, request.getParameters());
 
         // Use GeeResponseCacheHandler to cache the new response using the generated key
