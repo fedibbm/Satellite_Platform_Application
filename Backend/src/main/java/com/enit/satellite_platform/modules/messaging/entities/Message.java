@@ -1,40 +1,104 @@
 package com.enit.satellite_platform.modules.messaging.entities;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.Id;
-// Note: No @Document annotation as this is intended to be embedded within Conversation
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * Represents a single message within a conversation.
- * This class is intended to be embedded within the Conversation document.
+ * Message entity representing a single message in a 1-to-1 conversation.
+ * 
+ * Design Decisions:
+ * - Standalone document (not embedded) for scalability
+ * - Indexed fields for efficient querying
+ * - Compound indexes for common query patterns
+ * - Simple text-only content for MVP
  */
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Document(collection = "messages")
+@CompoundIndexes({
+    // Index for fetching all messages in a conversation, sorted by time
+    @CompoundIndex(name = "conversation_timestamp_idx", 
+                   def = "{'conversationId': 1, 'sentAt': 1}"),
+    
+    // Index for finding unread messages for a specific user
+    @CompoundIndex(name = "recipient_status_idx", 
+                   def = "{'recipientId': 1, 'status': 1}"),
+    
+    // Index for sender's message history
+    @CompoundIndex(name = "sender_conversation_idx", 
+                   def = "{'senderId': 1, 'conversationId': 1, 'sentAt': -1}")
+})
 public class Message {
 
-    @Id // Crucial for idempotency check even when embedded
+    @Id
     private String id;
 
-    private String senderId; // ID of the user who sent the message
+    /**
+     * Reference to the conversation this message belongs to.
+     * Allows efficient querying of all messages in a conversation.
+     */
+    @Indexed
+    private String conversationId;
 
-    private String recipientId; // ID of the user who received the message (could be null for group messages)
+    /**
+     * User ID of the sender.
+     */
+    @Indexed
+    private String senderId;
 
-    private String content; // Text content of the message
+    /**
+     * User ID of the recipient.
+     */
+    @Indexed
+    private String recipientId;
 
-    private LocalDateTime timestamp; // Time when the message was sent/created
+    /**
+     * Text content of the message.
+     * For MVP, we only support text messages.
+     */
+    private String content;
 
-    private MessageType type; // Type of message (USER_TO_USER, USER_TO_ADMIN, etc.)
+    /**
+     * Timestamp when the message was sent.
+     */
+    @Indexed
+    private LocalDateTime sentAt;
 
-    private List<Attachment> attachments = new ArrayList<>(); // List of attached file metadata
+    /**
+     * Timestamp when the message was read by the recipient.
+     * Null if the message hasn't been read yet.
+     */
+    private LocalDateTime readAt;
 
-    private List<Reaction> reactions = new ArrayList<>(); // List of reactions to this message
+    /**
+     * Current status of the message (SENT or READ).
+     */
+    private MessageStatus status;
 
-    // Optional fields: readStatus, editTimestamp, etc.
+    /**
+     * Marks this message as read.
+     * Updates the status and sets the readAt timestamp.
+     */
+    public void markAsRead() {
+        this.status = MessageStatus.READ;
+        this.readAt = LocalDateTime.now();
+    }
+
+    /**
+     * Checks if the message has been read.
+     */
+    public boolean isRead() {
+        return this.status == MessageStatus.READ;
+    }
 }
