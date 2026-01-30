@@ -62,11 +62,11 @@ export default function RoleManagement() {
               </tr>
             )}
             {roles.map((role) => (
-              <tr key={role.id || role.roleName}>
-                <td className="px-6 py-4 whitespace-nowrap">{role.roleName}</td>
+              <tr key={role.id || role.authority}>
+                <td className="px-6 py-4 whitespace-nowrap">{role.authority}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button
-                    onClick={() => handleDeleteRole(role.roleName)} // Attach delete handler
+                    onClick={() => handleDeleteRole(role.authority)} // Attach delete handler
                     className="text-red-600 hover:text-red-900"
                   >
                     Delete

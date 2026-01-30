@@ -1,20 +1,39 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-// Removed API_BASE_URL import
-import { authService } from '@/services/auth.service' // Import authService
+import { authService } from '@/services/auth.service'
+import { Authority } from '@/types/auth'
 
 export default function Register() {
   const router = useRouter()
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
+    selectedRoles: [] as string[],
   })
   const [error, setError] = useState('')
+  const [availableRoles, setAvailableRoles] = useState<Authority[]>([])
+  const [rolesLoading, setRolesLoading] = useState(true)
+
+  // Fetch available roles on mount
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const roles = await authService.getAvailableRoles()
+        setAvailableRoles(roles)
+      } catch (err: any) {
+        console.error('Failed to fetch roles:', err)
+        setError('Failed to load available roles. Please refresh the page.')
+      } finally {
+        setRolesLoading(false)
+      }
+    }
+    fetchRoles()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,11 +42,22 @@ export default function Register() {
       setError('Passwords do not match')
       return
     }
+
+    if (formData.selectedRoles.length === 0) {
+      setError('Please select at least one role')
+      return
+    }
+
     setError(''); // Clear previous errors
 
     try {
-      // Use authService.register
-      await authService.register(formData.email, formData.password);
+      // Use authService.register with username and selected roles
+      await authService.register(
+        formData.email, 
+        formData.password, 
+        formData.username,
+        formData.selectedRoles
+      );
       // Registration successful, redirect to login
       router.push('/auth/login');
     } catch (err: any) {
@@ -54,18 +84,18 @@ export default function Register() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="name" className="sr-only">
-                Full Name
+              <label htmlFor="username" className="sr-only">
+                Username
               </label>
               <input
-                id="name"
-                name="name"
+                id="username"
+                name="username"
                 type="text"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Full Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Username"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               />
             </div>
             <div>
@@ -83,6 +113,29 @@ export default function Register() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
+            </div>
+            <div>
+              <label htmlFor="role" className="sr-only">
+                Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                required
+                disabled={rolesLoading}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                value={formData.selectedRoles[0] || ''}
+                onChange={(e) => setFormData({ ...formData, selectedRoles: [e.target.value] })}
+              >
+                <option value="" disabled>
+                  {rolesLoading ? 'Loading roles...' : 'Select your role'}
+                </option>
+                {availableRoles.map((role) => (
+                  <option key={role.id || role.authority} value={role.authority}>
+                    {role.authority}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="password" className="sr-only">

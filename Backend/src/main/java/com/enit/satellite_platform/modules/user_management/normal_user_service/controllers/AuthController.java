@@ -9,11 +9,13 @@ import org.springframework.web.bind.annotation.*;
 
 import com.enit.satellite_platform.exceptions.DuplicationException;
 import com.enit.satellite_platform.modules.user_management.admin_privileges.services.AdminServices;
+import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.Authority;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.User;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.exceptions.InvalidCredentialsException;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.exceptions.InvalidTokenException;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.security.Jwt.JwtUtil;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.services.RefreshTokenService;
+import com.enit.satellite_platform.modules.user_management.management_cvore_service.services.RoleService;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.RefreshToken;
 import com.enit.satellite_platform.modules.user_management.normal_user_service.dtos.LoginRequest;
 import com.enit.satellite_platform.modules.user_management.normal_user_service.dtos.RefreshTokenRequest; // Add RefreshTokenRequest
@@ -22,6 +24,7 @@ import com.enit.satellite_platform.modules.user_management.normal_user_service.d
 import com.enit.satellite_platform.modules.user_management.normal_user_service.dtos.SignUpRequest;
 import com.enit.satellite_platform.modules.user_management.normal_user_service.dtos.UserUpdateRequest;
 import com.enit.satellite_platform.modules.user_management.normal_user_service.services.UserService;
+import com.enit.satellite_platform.shared.dto.GenericResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -30,6 +33,8 @@ import jakarta.servlet.http.HttpServletRequest; // Add HttpServletRequest
 import jakarta.validation.Valid; // Add Valid annotation
 
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -40,6 +45,7 @@ public class AuthController {
     private final AdminServices adminServices;
     private final JwtUtil jwtUtil;
     private final RefreshTokenService refreshTokenService; // Add RefreshTokenService
+    private final RoleService roleService;
 
     @Operation(summary = "Authenticate a user and return a JWT")
     @ApiResponses(value = {
@@ -72,6 +78,20 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("An error occurred during registration: " + e.getMessage());
         }
+    }
+
+    @Operation(summary = "Get available roles for signup")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Roles retrieved successfully")
+    })
+    @GetMapping("/auth/roles")
+    public ResponseEntity<GenericResponse<List<Authority>>> getAvailableRoles() {
+        List<Authority> roles = roleService.getAllRoles();
+        // Filter out ROLE_ADMIN - users cannot self-register as admin
+        List<Authority> availableRoles = roles.stream()
+                .filter(role -> !"ROLE_ADMIN".equals(role.getAuthority()))
+                .toList();
+        return ResponseEntity.ok(new GenericResponse<>("SUCCESS", "Available roles retrieved successfully", availableRoles));
     }
 
     @Operation(summary = "Delete a user by ID")

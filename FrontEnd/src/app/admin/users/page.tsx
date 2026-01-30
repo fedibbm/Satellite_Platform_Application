@@ -408,9 +408,9 @@ export default function UserManagement() {
                   {rolesLoading && <option>Loading roles...</option>}
                   {rolesError && <option>Error loading roles</option>}
                   {!rolesLoading && !rolesError && availableRoles.map((role) => (
-                    // Authority has 'id' (optional) and 'roleName' properties
-                    <option key={role.id || role.roleName} value={role.roleName}>
-                      {role.roleName}
+                    // Authority has 'id' (optional) and 'authority' properties
+                    <option key={role.id || role.authority} value={role.authority}>
+                      {role.authority}
                     </option>
                   ))}
                 </select>

@@ -1,14 +1,17 @@
 import { AUTH_ENDPOINTS } from '../config/api'
 import { httpClient } from '../utils/api/http-client'
+import { Authority } from '@/types/auth'
 
 interface LoginCredentials {
   username: string
   password: string
 }
 
-interface RegisterData extends LoginCredentials {
-  email: string // Keep email for registration
-  fullName: string
+interface RegisterData {
+  username: string
+  email: string
+  password: string
+  roles: string[]
 }
 
 class AuthService {
@@ -86,12 +89,13 @@ class AuthService {
     }
   }
 
-  async register(email: string, password: string): Promise<void> {
+  async register(email: string, password: string, username: string, roles?: string[]): Promise<void> {
     try {
       const response = await httpClient.post(AUTH_ENDPOINTS.REGISTER, {
+        username,
         email,
         password,
-        role: 'THEMATICIAN'  // Explicitly request THEMATICIAN role
+        roles: roles || ['THEMATICIAN']  // Backend expects roles as array, default to THEMATICIAN if not provided
       }, { requiresAuth: false });
       
       const accessToken = response.data?.accessToken || response.accessToken;
@@ -125,6 +129,19 @@ class AuthService {
       return response
     } catch (error: any) {
       throw new Error(error.message || 'Password reset request failed')
+    }
+  }
+
+  async getAvailableRoles(): Promise<Authority[]> {
+    try {
+      const response = await httpClient.get(AUTH_ENDPOINTS.GET_ROLES, {
+        requiresAuth: false,
+      });
+      // Response structure: { status: 'SUCCESS', message: '...', data: [...] }
+      return response.data || response;
+    } catch (error: any) {
+      console.error('Failed to fetch roles:', error);
+      throw new Error(error.message || 'Failed to fetch available roles');
     }
   }
 

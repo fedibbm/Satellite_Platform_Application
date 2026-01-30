@@ -1,8 +1,7 @@
-// Placeholder for Authority type
+// Authority type matching backend entity
 export interface Authority {
-  id?: string; // Assuming an ID field
-  roleName: string;
-  // Add other relevant fields if known
+  id?: string;
+  authority: string;  // The role name (e.g., "ROLE_THEMATICIAN", "ROLE_ADMIN")
 }
 
 // Add other auth-related types if needed

@@ -33,7 +33,8 @@ import java.util.Set;
 @CompoundIndexes({
     @CompoundIndex(name = "owner_projectName_unique", 
                    def = "{'owner': 1, 'projectName': 1}", 
-                   unique = true)
+                   unique = true,
+                   partialFilter = "{'deleted': false}")
 })
 @Document(collection = "projects")
 @Builder
