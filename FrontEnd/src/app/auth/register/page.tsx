@@ -102,21 +102,21 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#667eea] rounded-2xl mb-4 shadow-lg">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
           </div>
-          <h2 className="text-3xl font-bold bg-blue-600 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold bg-[#667eea] bg-clip-text text-transparent">
             Create Your Account
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             Already have an account?{' '}
-            <Link href="/auth/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+            <Link href="/auth/login" className="font-semibold text-[#667eea] hover:text-[#764ba2] transition-colors">
               Sign in
             </Link>
           </p>
@@ -141,7 +141,7 @@ export default function Register() {
                   name="username"
                   type="text"
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#667eea] focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   placeholder="Choose a username"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
@@ -166,7 +166,7 @@ export default function Register() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#667eea] focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   placeholder="your.email@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -190,7 +190,7 @@ export default function Register() {
                   name="role"
                   required
                   disabled={rolesLoading}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#667eea] focus:border-transparent transition-all text-gray-900 disabled:bg-gray-50 disabled:cursor-not-allowed"
                   value={formData.selectedRoles[0] || ''}
                   onChange={(e) => setFormData({ ...formData, selectedRoles: [e.target.value] })}
                 >
@@ -223,7 +223,7 @@ export default function Register() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
-                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#667eea] focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   placeholder="Create a strong password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -278,7 +278,7 @@ export default function Register() {
                   type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
-                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#667eea] focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
@@ -346,7 +346,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading || rolesLoading}
-              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-semibold text-white bg-blue-600  hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-semibold text-white bg-[#667eea] hover:from-[#5568d3] hover:to-[#6a3f8f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#667eea] disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98]"
             >
               {loading ? (
                 <>
@@ -370,9 +370,9 @@ export default function Register() {
           {/* Additional Info */}
           <div className="mt-6 text-center text-xs text-gray-500">
             By creating an account, you agree to our{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">Terms of Service</a>
+            <a href="#" className="text-[#667eea] hover:text-[#764ba2] font-medium">Terms of Service</a>
             {' '}and{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">Privacy Policy</a>
+            <a href="#" className="text-[#667eea] hover:text-[#764ba2] font-medium">Privacy Policy</a>
           </div>
         </div>
       </div>

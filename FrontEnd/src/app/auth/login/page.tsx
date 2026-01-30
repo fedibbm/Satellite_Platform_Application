@@ -38,7 +38,7 @@ export default function Login() {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#667eea] rounded-2xl mb-4 shadow-lg">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
@@ -48,7 +48,7 @@ export default function Login() {
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             Don't have an account?{' '}
-            <Link href="/auth/register" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+            <Link href="/auth/register" className="font-semibold text-[#667eea] hover:text-[#764ba2] transition-colors">
               Sign up
             </Link>
           </p>
@@ -72,7 +72,7 @@ export default function Login() {
                   id="username"
                   type="text"
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#667eea] focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   placeholder="Enter your username"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
@@ -95,7 +95,7 @@ export default function Login() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   required
-                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
+                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#667eea] focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -121,7 +121,7 @@ export default function Login() {
 
             {/* Forgot Password Link */}
             <div className="flex items-center justify-end">
-              <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
+              <Link href="/auth/forgot-password" className="text-sm text-[#667eea] hover:text-[#764ba2] font-medium transition-colors">
                 Forgot password?
               </Link>
             </div>
@@ -154,7 +154,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-semibold text-white bg-[#667eea] hover:from-[#5568d3] hover:to-[#6a3f8f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#667eea] disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98]">
             
               {loading ? (
                 <>
