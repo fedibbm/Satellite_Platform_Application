@@ -103,11 +103,11 @@ export default function Header({ title }: HeaderProps) {
                 }}
               >
                 <Avatar sx={{ width: 32, height: 32, bgcolor: 'white', color: '#667eea' }}>
-                  {user?.name?.charAt(0) || 'U'}
+                  {user?.username?.charAt(0) || 'U'}
                 </Avatar>
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                   <Typography variant="body2" sx={{ color: 'white', fontWeight: 600, lineHeight: 1.2 }}>
-                    {user?.name || 'User'}
+                    {user?.username || 'User'}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.65rem' }}>
                     Click to logout
@@ -195,11 +195,11 @@ export default function Header({ title }: HeaderProps) {
                 }}
               >
                 <Avatar sx={{ width: 36, height: 36, bgcolor: 'white', color: '#667eea' }}>
-                  {user?.name?.charAt(0) || 'U'}
+                  {user?.username?.charAt(0) || 'U'}
                 </Avatar>
                 <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                   <Typography variant="body1" sx={{ color: 'white', fontWeight: 600 }}>
-                    {user?.name || 'User'}
+                    {user?.username || 'User'}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
                     Tap to logout
