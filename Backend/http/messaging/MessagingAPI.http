@@ -1,0 +1,350 @@
+# Messaging API Testing
+
+## Prerequisites
+- Backend running on http://localhost:8080
+- Valid JWT token in Authorization header
+- MongoDB running
+
+## Authentication
+All requests require authentication. Replace `{{token}}` with your JWT token.
+
+---
+
+## 1. Send Text Message
+
+```http
+POST http://localhost:8080/api/messaging/messages
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "recipientId": "recipient_user_id_here",
+  "content": "Hello! This is a test message."
+}
+```
+
+Expected Response: 201 Created
+```json
+{
+  "id": "msg123",
+  "conversationId": "conv456",
+  "senderId": "your_user_id",
+  "recipientId": "recipient_user_id",
+  "messageType": "TEXT",
+  "content": "Hello! This is a test message.",
+  "imageUrl": null,
+  "sentAt": "2026-01-31T14:30:25",
+  "readAt": null,
+  "status": "SENT"
+}
+```
+
+---
+
+## 2. Send Image Message
+
+```http
+POST http://localhost:8080/api/messaging/messages/image
+Content-Type: multipart/form-data
+Authorization: Bearer {{token}}
+
+--boundary
+Content-Disposition: form-data; name="recipientId"
+
+recipient_user_id_here
+--boundary
+Content-Disposition: form-data; name="image"; filename="test.jpg"
+Content-Type: image/jpeg
+
+<binary image data>
+--boundary
+Content-Disposition: form-data; name="caption"
+
+Check out this image!
+--boundary--
+```
+
+Expected Response: 201 Created
+```json
+{
+  "id": "msg789",
+  "conversationId": "conv456",
+  "senderId": "your_user_id",
+  "recipientId": "recipient_user_id",
+  "messageType": "IMAGE",
+  "content": "Check out this image!",
+  "imageUrl": "/api/messaging/images/conv456/20260131-143025-abc123.jpg",
+  "sentAt": "2026-01-31T14:30:25",
+  "readAt": null,
+  "status": "SENT"
+}
+```
+
+---
+
+## 3. Get Conversations List
+
+```http
+GET http://localhost:8080/api/messaging/conversations?page=0&size=20
+Authorization: Bearer {{token}}
+```
+
+Expected Response: 200 OK
+```json
+{
+  "content": [
+    {
+      "id": "conv456",
+      "createdAt": "2026-01-30T10:00:00",
+      "lastMessageAt": "2026-01-31T14:30:25",
+      "lastMessagePreview": "Hello! This is a test message.",
+      "lastMessageType": "TEXT",
+      "lastMessageSenderId": "your_user_id",
+      "unreadCount": 0,
+      "otherParticipantId": "recipient_user_id",
+      "otherParticipantName": null,
+      "otherParticipantAvatar": null,
+      "otherParticipantOnline": null
+    }
+  ],
+  "pageable": {...},
+  "totalElements": 1,
+  "totalPages": 1,
+  "size": 20,
+  "number": 0
+}
+```
+
+---
+
+## 4. Get Conversation Messages
+
+```http
+GET http://localhost:8080/api/messaging/conversations/conv456/messages?page=0&size=50
+Authorization: Bearer {{token}}
+```
+
+Expected Response: 200 OK
+```json
+{
+  "content": [
+    {
+      "id": "msg789",
+      "conversationId": "conv456",
+      "messageType": "IMAGE",
+      "content": "Check out this image!",
+      "imageUrl": "/api/messaging/images/conv456/20260131-143025-abc123.jpg",
+      "sentAt": "2026-01-31T14:30:25",
+      "status": "SENT"
+    },
+    {
+      "id": "msg123",
+      "conversationId": "conv456",
+      "messageType": "TEXT",
+      "content": "Hello! This is a test message.",
+      "sentAt": "2026-01-31T14:25:10",
+      "status": "READ"
+    }
+  ],
+  "totalElements": 2
+}
+```
+
+---
+
+## 5. Mark Message as Read
+
+```http
+PUT http://localhost:8080/api/messaging/messages/msg123/read
+Authorization: Bearer {{token}}
+```
+
+Expected Response: 200 OK
+```json
+{
+  "id": "msg123",
+  "status": "READ",
+  "readAt": "2026-01-31T14:35:00"
+}
+```
+
+---
+
+## 6. Mark All Conversation Messages as Read
+
+```http
+PUT http://localhost:8080/api/messaging/conversations/conv456/read
+Authorization: Bearer {{token}}
+```
+
+Expected Response: 200 OK (empty body)
+
+---
+
+## 7. Get Unread Count
+
+```http
+GET http://localhost:8080/api/messaging/unread-count
+Authorization: Bearer {{token}}
+```
+
+Expected Response: 200 OK
+```json
+{
+  "totalUnreadCount": 5,
+  "conversationsWithUnread": 2
+}
+```
+
+---
+
+## 8. Get Image
+
+```http
+GET http://localhost:8080/api/messaging/images/conv456/20260131-143025-abc123.jpg
+Authorization: Bearer {{token}}
+```
+
+Expected Response: 200 OK
+- Content-Type: image/jpeg
+- Binary image data
+
+---
+
+## 9. Get Specific Conversation
+
+```http
+GET http://localhost:8080/api/messaging/conversations/conv456
+Authorization: Bearer {{token}}
+```
+
+Expected Response: 200 OK
+```json
+{
+  "id": "conv456",
+  "createdAt": "2026-01-30T10:00:00",
+  "lastMessageAt": "2026-01-31T14:30:25",
+  "lastMessagePreview": "Hello! This is a test message.",
+  "lastMessageType": "TEXT",
+  "unreadCount": 0,
+  "otherParticipantId": "recipient_user_id"
+}
+```
+
+---
+
+## 10. Delete Conversation
+
+```http
+DELETE http://localhost:8080/api/messaging/conversations/conv456
+Authorization: Bearer {{token}}
+```
+
+Expected Response: 204 No Content
+
+---
+
+## Error Responses
+
+### 400 Bad Request - Validation Error
+```json
+{
+  "timestamp": "2026-01-31T14:30:25",
+  "status": 400,
+  "error": "Validation Failed",
+  "message": "Input validation failed",
+  "validationErrors": {
+    "recipientId": "Recipient ID is required",
+    "content": "Message content is required"
+  }
+}
+```
+
+### 403 Forbidden - Unauthorized Access
+```json
+{
+  "timestamp": "2026-01-31T14:30:25",
+  "status": 403,
+  "error": "Forbidden",
+  "message": "You are not authorized to access this conversation"
+}
+```
+
+### 404 Not Found - Conversation Not Found
+```json
+{
+  "timestamp": "2026-01-31T14:30:25",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Conversation not found: conv456"
+}
+```
+
+### 400 Bad Request - Invalid File
+```json
+{
+  "timestamp": "2026-01-31T14:30:25",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "File type 'exe' is not allowed. Allowed types: jpg, jpeg, png, gif, webp"
+}
+```
+
+---
+
+## Testing with cURL
+
+### Send Text Message
+```bash
+curl -X POST http://localhost:8080/api/messaging/messages \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipientId": "recipient_user_id",
+    "content": "Hello from cURL!"
+  }'
+```
+
+### Send Image Message
+```bash
+curl -X POST http://localhost:8080/api/messaging/messages/image \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "recipientId=recipient_user_id" \
+  -F "image=@/path/to/image.jpg" \
+  -F "caption=Check this out!"
+```
+
+### Get Conversations
+```bash
+curl -X GET "http://localhost:8080/api/messaging/conversations?page=0&size=20" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Get Messages
+```bash
+curl -X GET "http://localhost:8080/api/messaging/conversations/conv456/messages?page=0&size=50" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Mark as Read
+```bash
+curl -X PUT http://localhost:8080/api/messaging/messages/msg123/read \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Get Unread Count
+```bash
+curl -X GET http://localhost:8080/api/messaging/unread-count \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## Notes
+
+1. **Authentication**: All endpoints require a valid JWT token in the Authorization header
+2. **User ID**: The sender ID is automatically extracted from the authentication token
+3. **Pagination**: Default page size is 20 for conversations, 50 for messages
+4. **Image Size**: Max 5MB per image
+5. **Image Formats**: jpg, jpeg, png, gif, webp only
+6. **Message Content**: Max 5000 characters for text messages
