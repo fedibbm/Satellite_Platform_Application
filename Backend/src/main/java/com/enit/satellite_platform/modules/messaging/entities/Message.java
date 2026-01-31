@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
  * - Standalone document (not embedded) for scalability
  * - Indexed fields for efficient querying
  * - Compound indexes for common query patterns
- * - Simple text-only content for MVP
+ * - Supports both text and image messages
  */
 @Data
 @Builder
@@ -64,10 +64,22 @@ public class Message {
     private String recipientId;
 
     /**
+     * Type of message content (TEXT or IMAGE).
+     */
+    private MessageType messageType;
+
+    /**
      * Text content of the message.
-     * For MVP, we only support text messages.
+     * Required for TEXT messages, optional for IMAGE messages (can be a caption).
      */
     private String content;
+
+    /**
+     * URL or file path to the image.
+     * Only populated for IMAGE type messages.
+     * Format: /uploads/messages/{conversationId}/{filename}
+     */
+    private String imageUrl;
 
     /**
      * Timestamp when the message was sent.

@@ -65,8 +65,15 @@ public class Conversation {
     /**
      * Preview of the last message content (first 100 chars).
      * Cached here to avoid querying messages collection for conversation list.
+     * For image messages, this will be "📷 Image" or similar indicator.
      */
     private String lastMessagePreview;
+
+    /**
+     * Type of the last message (TEXT or IMAGE).
+     * Used to display appropriate icon/preview in conversation list.
+     */
+    private MessageType lastMessageType;
 
     /**
      * ID of the user who sent the last message.
@@ -84,11 +91,24 @@ public class Conversation {
     /**
      * Updates conversation metadata when a new message is sent.
      * Should be called whenever a message is added to this conversation.
+     * 
+     * @param messagePreview Preview text (or "📷 Image" for image messages)
+     * @param messageType Type of the message (TEXT or IMAGE)
+     * @param senderId ID of the user who sent the message
      */
-    public void updateLastMessage(String messagePreview, String senderId) {
+    public void updateLastMessage(String messagePreview, MessageType messageType, String senderId) {
         this.lastMessageAt = LocalDateTime.now();
         this.lastMessagePreview = messagePreview;
+        this.lastMessageType = messageType;
         this.lastMessageSenderId = senderId;
+    }
+
+    /**
+     * Updates conversation metadata when a new message is sent (text only).
+     * Convenience method for backward compatibility.
+     */
+    public void updateLastMessage(String messagePreview, String senderId) {
+        updateLastMessage(messagePreview, MessageType.TEXT, senderId);
     }
 
     /**
