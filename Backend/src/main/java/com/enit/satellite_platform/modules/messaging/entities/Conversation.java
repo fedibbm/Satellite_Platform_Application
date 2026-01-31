@@ -83,10 +83,25 @@ public class Conversation {
 
     /**
      * Count of unread messages for each participant.
-     * Map structure: {userId -> unreadCount}
-     * Example: {"user1Id": 0, "user2Id": 3}
+     * Map structure: {encodedUserId -> unreadCount}
+     * Note: User IDs with dots (like emails) are encoded by replacing '.' with '___DOT___'
+     * Example: {"user1Id": 0, "user2___DOT___example___DOT___com": 3}
      */
     private java.util.Map<String, Integer> unreadCounts;
+
+    /**
+     * Encodes a user ID to be safe for MongoDB map keys (replaces dots).
+     */
+    private static String encodeUserId(String userId) {
+        return userId == null ? null : userId.replace(".", "___DOT___");
+    }
+
+    /**
+     * Decodes a user ID from MongoDB map key format.
+     */
+    private static String decodeUserId(String encodedUserId) {
+        return encodedUserId == null ? null : encodedUserId.replace("___DOT___", ".");
+    }
 
     /**
      * Updates conversation metadata when a new message is sent.
@@ -118,7 +133,8 @@ public class Conversation {
         if (this.unreadCounts == null) {
             this.unreadCounts = new java.util.HashMap<>();
         }
-        this.unreadCounts.put(userId, this.unreadCounts.getOrDefault(userId, 0) + 1);
+        String encodedUserId = encodeUserId(userId);
+        this.unreadCounts.put(encodedUserId, this.unreadCounts.getOrDefault(encodedUserId, 0) + 1);
     }
 
     /**
@@ -127,8 +143,18 @@ public class Conversation {
      */
     public void resetUnreadCount(String userId) {
         if (this.unreadCounts != null) {
-            this.unreadCounts.put(userId, 0);
+            this.unreadCounts.put(encodeUserId(userId), 0);
         }
+    }
+
+    /**
+     * Gets unread count for a specific user.
+     */
+    public int getUnreadCount(String userId) {
+        if (this.unreadCounts == null) {
+            return 0;
+        }
+        return this.unreadCounts.getOrDefault(encodeUserId(userId), 0);
     }
 
     /**

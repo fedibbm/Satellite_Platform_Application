@@ -1,0 +1,165 @@
+{
+  "client": "Thunder Client",
+  "collectionName": "Messaging API",
+  "dateExported": "2026-01-31",
+  "version": "1.1",
+  "folders": [],
+  "requests": [
+    {
+      "name": "1. Send Text Message",
+      "method": "POST",
+      "url": "http://localhost:8080/api/messaging/messages",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"recipientId\": \"6978eff038aa1e365ee5fcfd\",\n  \"content\": \"Hello! This is a test message from Thunder Client!\"\n}"
+      },
+      "tests": []
+    },
+    {
+      "name": "2. Get Conversations",
+      "method": "GET",
+      "url": "http://localhost:8080/api/messaging/conversations?page=0&size=20",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "name": "3. Get Conversation Messages",
+      "method": "GET",
+      "url": "http://localhost:8080/api/messaging/conversations/REPLACE_WITH_CONVERSATION_ID/messages?page=0&size=50",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "name": "4. Get Unread Count",
+      "method": "GET",
+      "url": "http://localhost:8080/api/messaging/unread-count",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "name": "5. Send Another Text Message",
+      "method": "POST",
+      "url": "http://localhost:8080/api/messaging/messages",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"recipientId\": \"6978eff038aa1e365ee5fcfd\",\n  \"content\": \"This is my second message! 🚀\"\n}"
+      },
+      "tests": []
+    },
+    {
+      "name": "6. Mark Message as Read",
+      "method": "PUT",
+      "url": "http://localhost:8080/api/messaging/messages/REPLACE_WITH_MESSAGE_ID/read",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "name": "7. Mark All Conversation as Read",
+      "method": "PUT",
+      "url": "http://localhost:8080/api/messaging/conversations/REPLACE_WITH_CONVERSATION_ID/read",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "name": "8. Send Image Message",
+      "method": "POST",
+      "url": "http://localhost:8080/api/messaging/messages/image",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "body": {
+        "type": "formdata",
+        "formdata": [
+          {
+            "name": "recipientId",
+            "value": "6978eff038aa1e365ee5fcfd",
+            "type": "text"
+          },
+          {
+            "name": "image",
+            "value": "",
+            "type": "file"
+          },
+          {
+            "name": "caption",
+            "value": "Check out this image!",
+            "type": "text"
+          }
+        ]
+      },
+      "tests": []
+    },
+    {
+      "name": "9. Get Image",
+      "method": "GET",
+      "url": "http://localhost:8080/api/messaging/images/CONVERSATION_ID/IMAGE_FILENAME.jpg",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "name": "10. Get Specific Conversation",
+      "method": "GET",
+      "url": "http://localhost:8080/api/messaging/conversations/REPLACE_WITH_CONVERSATION_ID",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sIm5hbWUiOiJ0aGVtYXRpY2lhbkBleGFtcGxlLmNvbSIsInN1YiI6InRoZW1hdGljaWFuQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5NzgyODA3LCJleHAiOjE3Njk4NjkyMDd9.8uE0N2Zvuaje3rReBRVjqzGbc_mVVHE60_Ne9PsPOlaMc3kntakXbEeJA-EKaFZZjRTDuOFZRX5C-mnJal6GeA"
+        }
+      ],
+      "tests": []
+    }
+  ]
+}

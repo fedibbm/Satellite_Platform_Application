@@ -21,8 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -36,7 +35,6 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final ConversationRepository conversationRepository;
     private final MessagingFileStorageConfig fileStorageConfig;
-    private final ConversationService conversationService;
 
     /**
      * Sends a text message from one user to another.
@@ -46,7 +44,7 @@ public class MessageService {
         log.info("Sending text message from {} to {}", senderId, recipientId);
         
         // Find or create conversation
-        Conversation conversation = conversationService.findOrCreateConversation(senderId, recipientId);
+        Conversation conversation = findOrCreateConversation(senderId, recipientId);
         
         // Create message
         Message message = Message.builder()
@@ -83,7 +81,7 @@ public class MessageService {
         validateImageFile(imageFile);
         
         // Find or create conversation
-        Conversation conversation = conversationService.findOrCreateConversation(senderId, recipientId);
+        Conversation conversation = findOrCreateConversation(senderId, recipientId);
         
         // Save image file
         String imageUrl = saveImageFile(conversation.getId(), imageFile);
@@ -287,6 +285,40 @@ public class MessageService {
             return filename.substring(lastDotIndex + 1).toLowerCase();
         }
         return "";
+    }
+
+    /**
+     * Finds or creates a conversation between two users.
+     */
+    private Conversation findOrCreateConversation(String userId1, String userId2) {
+        log.debug("Finding or creating conversation between {} and {}", userId1, userId2);
+        
+        Set<String> participants = new java.util.HashSet<>(java.util.Arrays.asList(userId1, userId2));
+        
+        // Check if conversation already exists
+        java.util.Optional<Conversation> existing = conversationRepository.findByParticipants(participants);
+        
+        if (existing.isPresent()) {
+            log.debug("Found existing conversation: {}", existing.get().getId());
+            return existing.get();
+        }
+        
+        // Create new conversation
+        Conversation conversation = Conversation.builder()
+                .participants(participants)
+                .createdAt(LocalDateTime.now())
+                .lastMessageAt(LocalDateTime.now())
+                .unreadCounts(new java.util.HashMap<>())
+                .build();
+        
+        // Initialize unread counts (using encoded user IDs for MongoDB compatibility)
+        conversation.resetUnreadCount(userId1);
+        conversation.resetUnreadCount(userId2);
+        
+        conversation = conversationRepository.save(conversation);
+        log.info("Created new conversation: {}", conversation.getId());
+        
+        return conversation;
     }
 
     /**

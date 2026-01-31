@@ -52,9 +52,9 @@ public class ConversationService {
                 .unreadCounts(new HashMap<>())
                 .build();
         
-        // Initialize unread counts
-        conversation.getUnreadCounts().put(userId1, 0);
-        conversation.getUnreadCounts().put(userId2, 0);
+        // Initialize unread counts (using encoded user IDs for MongoDB compatibility)
+        conversation.resetUnreadCount(userId1);
+        conversation.resetUnreadCount(userId2);
         
         conversation = conversationRepository.save(conversation);
         log.info("Created new conversation: {}", conversation.getId());
@@ -108,12 +108,9 @@ public class ConversationService {
         // Find all user's conversations
         List<Conversation> conversations = conversationRepository.findByParticipantsContaining(userId);
         
-        // Count those with unread messages
+        // Count those with unread messages (using the getUnreadCount method which handles encoding)
         return conversations.stream()
-                .filter(conv -> {
-                    Integer unreadCount = conv.getUnreadCounts().get(userId);
-                    return unreadCount != null && unreadCount > 0;
-                })
+                .filter(conv -> conv.getUnreadCount(userId) > 0)
                 .count();
     }
 
@@ -147,8 +144,8 @@ public class ConversationService {
         // Get the other participant's ID
         String otherParticipantId = conversation.getOtherParticipant(currentUserId);
         
-        // Get unread count for current user
-        Integer unreadCount = conversation.getUnreadCounts().getOrDefault(currentUserId, 0);
+        // Get unread count for current user (using the method which handles encoding)
+        Integer unreadCount = conversation.getUnreadCount(currentUserId);
         
         ConversationResponse response = ConversationResponse.builder()
                 .id(conversation.getId())
