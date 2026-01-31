@@ -1,5 +1,6 @@
 package com.enit.satellite_platform.modules.messaging.dto;
 
+import com.enit.satellite_platform.modules.messaging.entities.Message;
 import com.enit.satellite_platform.modules.messaging.entities.MessageStatus;
 import com.enit.satellite_platform.modules.messaging.entities.MessageType;
 import lombok.AllArgsConstructor;
@@ -32,4 +33,22 @@ public class MessageResponse {
     // Optional: enriched sender info
     private String senderName;
     private String senderAvatar;
+    
+    /**
+     * Convert Message entity to MessageResponse DTO.
+     */
+    public static MessageResponse fromEntity(Message message) {
+        return MessageResponse.builder()
+                .id(message.getId())
+                .conversationId(message.getConversationId())
+                .senderId(message.getSenderId())
+                .recipientId(message.getRecipientId())
+                .messageType(message.getMessageType())
+                .content(message.getContent())
+                .imageUrl(message.getImageUrl())
+                .sentAt(message.getSentAt())
+                .readAt(message.getReadAt())
+                .status(message.getStatus())
+                .build();
+    }
 }

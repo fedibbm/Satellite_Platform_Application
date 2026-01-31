@@ -8,10 +8,6 @@ import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
 import static org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO;
-import org.springframework.messaging.simp.config.MessageBrokerRegistry; // Add WebSocket imports
-import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker; // Add WebSocket imports
-import org.springframework.web.socket.config.annotation.StompEndpointRegistry; // Add WebSocket imports
-import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer; // Add WebSocket imports
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean; // Add Bean import
@@ -37,9 +33,7 @@ import org.springframework.scheduling.annotation.SchedulingConfigurer;
 @EnableScheduling
 @EnableMongoRepositories(basePackages = "com.enit.satellite_platform")
 @EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)
-// @Import(WebSocketConfig.class) // Remove explicit import
-@EnableWebSocketMessageBroker // Add annotation here
-public class SatellitePlatformApplication implements WebSocketMessageBrokerConfigurer, SchedulingConfigurer { // Implement SchedulingConfigurer again
+public class SatellitePlatformApplication implements SchedulingConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(SatellitePlatformApplication.class);
 
@@ -50,22 +44,6 @@ public class SatellitePlatformApplication implements WebSocketMessageBrokerConfi
      */
     public static void main(String[] args) {
         SpringApplication.run(SatellitePlatformApplication.class, args);
-    }
-
-    // --- WebSocket Configuration Methods ---
-
-    @Override
-    public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic");
-        config.setApplicationDestinationPrefixes("/app");
-    }
-
-    @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        log.info("Registering STOMP endpoint directly in main app: /monitoring-websocket with SockJS");
-        registry.addEndpoint("/monitoring-websocket")
-                .setAllowedOrigins("*")
-                 .withSockJS();
     }
 
     // --- Explicit Task Scheduler Configuration Re-added ---

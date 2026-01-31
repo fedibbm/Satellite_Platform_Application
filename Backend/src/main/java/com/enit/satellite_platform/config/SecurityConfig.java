@@ -61,6 +61,7 @@ public class SecurityConfig {
                         // Allow unauthenticated access to authentication endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         // Allow unauthenticated access to WebSocket handshake/info endpoints
+                        .requestMatchers("/ws/**").permitAll() // WebSocket endpoint for messaging
                         .requestMatchers("/ws-logs/**").permitAll() // Keep existing rule for audit logs if needed
                         .requestMatchers("/monitoring-websocket/**").permitAll() // Add permission for monitoring endpoint
                         // Restrict DELETE requests to /api/account/** to ADMIN role
