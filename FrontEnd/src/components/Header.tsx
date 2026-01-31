@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth';
+import { useMessaging } from '../hooks/useMessaging';
 import { usePathname, useRouter } from 'next/navigation';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -21,6 +22,7 @@ import MessageIcon from '@mui/icons-material/Message';
 import ArticleIcon from '@mui/icons-material/Article';
 import PeopleIcon from '@mui/icons-material/People';
 import ForumIcon from '@mui/icons-material/Forum';
+import MessagingPopup from './MessagingPopup';
 
 interface HeaderProps {
   title: string;
@@ -28,7 +30,9 @@ interface HeaderProps {
 
 export default function Header({ title }: HeaderProps) {
   const { user, logout, isLoggedIn } = useAuth();
+  const { unreadCount } = useMessaging();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMessagingOpen, setIsMessagingOpen] = useState(false);
   const [activePortal, setActivePortal] = useState<'workspace' | 'community'>('workspace');
   const pathname = usePathname();
   const router = useRouter();
@@ -168,13 +172,14 @@ export default function Header({ title }: HeaderProps) {
             {/* Messages Icon with Badge */}
             <IconButton
               size="small"
+              onClick={() => setIsMessagingOpen(!isMessagingOpen)}
               sx={{
                 color: 'white',
                 '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
               }}
               aria-label="Messages"
             >
-              <Badge badgeContent={3} color="error">
+              <Badge badgeContent={unreadCount} color="error">
                 <MessageIcon />
               </Badge>
             </IconButton>
@@ -340,6 +345,17 @@ export default function Header({ title }: HeaderProps) {
           </div>
         </div>
       </div>
+
+      {/* Messaging Popup */}
+      {isMessagingOpen && loggedIn && (
+        <MessagingPopup
+          onClose={() => setIsMessagingOpen(false)}
+          onOpenFull={() => {
+            setIsMessagingOpen(false);
+            router.push('/messages');
+          }}
+        />
+      )}
     </AppBar>
   );
 }
