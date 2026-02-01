@@ -21,6 +21,7 @@ export const useMessaging = () => {
   const [loading, setLoading] = useState(false);
   
   const typingTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  const loadedOnce = useRef(false);
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -28,6 +29,9 @@ export const useMessaging = () => {
       try {
         await wsService.connect();
         setIsConnected(true);
+        
+        // Reset loadedOnce when WebSocket connects so conversations load
+        loadedOnce.current = false;
       } catch (error) {
         console.error('Failed to connect WebSocket:', error);
         setIsConnected(false);
@@ -62,13 +66,7 @@ export const useMessaging = () => {
     };
   }, []);
 
-  // Load conversations on mount
-  useEffect(() => {
-    loadConversations();
-    loadUnreadCount();
-  }, []);
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       setLoading(true);
       const response = await messagingApi.getConversations(0, 50);
@@ -78,36 +76,51 @@ export const useMessaging = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadMessages = async (conversationId: string) => {
-    try {
-      const response = await messagingApi.getMessages(conversationId, 0, 50);
-      setMessages(prev => ({
-        ...prev,
-        [conversationId]: response.content.reverse() // Reverse to show oldest first
-      }));
-      
-      // Mark all messages as read
-      const unreadMessages = response.content.filter(msg => !msg.readAt && msg.recipientId !== getCurrentUserId());
-      unreadMessages.forEach(msg => {
-        if (isConnected) {
-          wsService.sendReadReceipt(msg.id);
-        }
-      });
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-    }
-  };
-
-  const loadUnreadCount = async () => {
+  const loadUnreadCount = useCallback(async () => {
     try {
       const response = await messagingApi.getUnreadCount();
       setUnreadCount(response.unreadCount);
     } catch (error) {
       console.error('Failed to load unread count:', error);
     }
-  };
+  }, []);
+
+  // Load conversations on mount (only once)
+  useEffect(() => {
+    if (!loadedOnce.current) {
+      loadedOnce.current = true;
+      loadConversations();
+      loadUnreadCount();
+    }
+  }, [loadConversations, loadUnreadCount]);
+
+  const loadMessages = useCallback(async (conversationId: string) => {
+    try {
+      const response = await messagingApi.getMessages(conversationId, 0, 50);
+      // Sort messages by timestamp (oldest first, newest at bottom)
+      const sortedMessages = [...response.content].sort((a, b) => 
+        new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+      );
+      setMessages(prev => ({
+        ...prev,
+        [conversationId]: sortedMessages
+      }));
+      
+      // Mark only the latest unread message as read (backend will mark others)
+      const unreadMessages = sortedMessages.filter(
+        msg => !msg.readAt && msg.senderId !== getCurrentUserId()
+      );
+      if (unreadMessages.length > 0 && isConnected) {
+        // Only send one read receipt for the latest unread message
+        const latestUnread = unreadMessages[unreadMessages.length - 1];
+        wsService.sendReadReceipt(latestUnread.id);
+      }
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    }
+  }, [isConnected]);
 
   const handleIncomingMessage = (message: Message) => {
     // Add message to the conversation
@@ -176,7 +189,7 @@ export const useMessaging = () => {
     ));
   };
 
-  const handleReadReceipt = (receipt) => {
+  const handleReadReceipt = (receipt: { messageId: string; readerId: string; readAt: string }) => {
     // Update message status to READ
     setMessages(prev => {
       const updated = { ...prev };
@@ -234,7 +247,46 @@ export const useMessaging = () => {
 
   const getCurrentUserId = (): string => {
     // Get from localStorage or auth context
+    if (typeof window === 'undefined') return '';
+    
+    // Try getting from user object first
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.id) return user.id;
+        if (user.email) return user.email;
+      } catch (e) {
+        console.error('Failed to parse user from localStorage:', e);
+      }
+    }
+    
     return localStorage.getItem('userId') || localStorage.getItem('email') || '';
+  };
+
+  const getCurrentUserName = (): string => {
+    // Get user's name from localStorage
+    if (typeof window === 'undefined') return 'User';
+    
+    // Try getting from user object first
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.username) return user.username;
+        if (user.name) return user.name;
+        if (user.email) return user.email;
+      } catch (e) {
+        console.error('Failed to parse user from localStorage:', e);
+      }
+    }
+    
+    // Fallback to direct keys
+    return localStorage.getItem('username') || 
+           localStorage.getItem('userName') || 
+           localStorage.getItem('name') || 
+           localStorage.getItem('email') || 
+           'User';
   };
 
   return {
@@ -251,6 +303,7 @@ export const useMessaging = () => {
     sendTyping,
     sendImage,
     markAsRead,
-    getCurrentUserId
+    getCurrentUserId,
+    getCurrentUserName,
   };
 };

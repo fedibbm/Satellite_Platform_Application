@@ -27,16 +27,6 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "conversations")
-@CompoundIndexes({
-    // Index for finding a conversation between two specific users
-    @CompoundIndex(name = "participants_idx", 
-                   def = "{'participants': 1}", 
-                   unique = true),
-    
-    // Index for sorting user's conversations by most recent activity
-    @CompoundIndex(name = "participant_lastmessage_idx", 
-                   def = "{'participants': 1, 'lastMessageAt': -1}")
-})
 public class Conversation {
 
     @Id

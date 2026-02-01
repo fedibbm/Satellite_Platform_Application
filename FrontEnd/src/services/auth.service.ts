@@ -39,34 +39,27 @@ class AuthService {
       this.loginCooldownEnd = 0;
 
       // Store the JWT token - Access directly from the response object
-      const accessToken = response?.accessToken; // No .data
+      const accessToken = response?.accessToken;
       if (accessToken) {
         localStorage.setItem('token', accessToken);
+        
+        // Backend returns id, username and email in the response
+        const user = {
+          id: response.id, // User's ObjectId from backend
+          username: response.username || response.email, // The actual username from registration
+          email: response.email,
+          roles: response.roles || []
+        };
+        
+        console.log('[AuthService] Login response:', response);
+        console.log('[AuthService] Storing user:', user);
+        
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('userRoles', JSON.stringify(response.roles || []));
+        
+        return response;
       } else {
-        // If no token, we should probably throw an error earlier, but log for now
-        // throw new Error('No token received from server');
-      }
-
-      // Store additional user information (legacy - can be removed later if 'user' object works)
-      if (response?.roles) { // No .data
-        localStorage.setItem('userRoles', JSON.stringify(response.roles));
-      }
-      // Log the raw response data from the login endpoint (using the already logged raw response)
-      // console.log('[AuthService Login] Response Data:', response.data); // Redundant now
-
-      // Store user object if available - Access directly from the response object
-      if (response?.id && response?.username && response?.email && response?.roles) { // No .data
-          const user = {
-              id: response.id,
-              username: response.username,
-              email: response.email,
-              roles: response.roles,
-              // Add other relevant fields if needed
-          };
-          localStorage.setItem('user', JSON.stringify(user));
-      } else {
-          // Clear potentially stale user data if login response is incomplete
-          localStorage.removeItem('user');
+        throw new Error('No token received from server');
       }
 
       return response;

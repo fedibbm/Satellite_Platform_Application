@@ -5,8 +5,11 @@ import com.enit.satellite_platform.modules.messaging.entities.Conversation;
 import com.enit.satellite_platform.modules.messaging.exceptions.ConversationNotFoundException;
 import com.enit.satellite_platform.modules.messaging.exceptions.UnauthorizedAccessException;
 import com.enit.satellite_platform.modules.messaging.repositories.ConversationRepository;
+import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.User;
+import com.enit.satellite_platform.modules.user_management.normal_user_service.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +29,7 @@ import java.util.*;
 public class ConversationService {
 
     private final ConversationRepository conversationRepository;
+    private final UserRepository userRepository;
 
     /**
      * Finds or creates a conversation between two users.
@@ -144,8 +148,43 @@ public class ConversationService {
         // Get the other participant's ID
         String otherParticipantId = conversation.getOtherParticipant(currentUserId);
         
-        // Get unread count for current user (using the method which handles encoding)
+        // Get unread count for current user
         Integer unreadCount = conversation.getUnreadCount(currentUserId);
+        
+        // Fetch other participant's info from User repository
+        String otherParticipantName = null;
+        try {
+            log.debug("Looking up user with ID: {}", otherParticipantId);
+            
+            // Convert to ObjectId and find user
+            ObjectId userId = new ObjectId(otherParticipantId);
+            Optional<User> otherUser = userRepository.findById(userId);
+            
+            if (otherUser.isPresent()) {
+                User user = otherUser.get();
+                String name = user.getName();
+                
+                // Use the name field if available and not empty
+                if (name != null && !name.trim().isEmpty()) {
+                    otherParticipantName = name;
+                    log.debug("Found user {} with name: {}", otherParticipantId, otherParticipantName);
+                } else {
+                    // If name is empty, extract username from email
+                    String email = user.getEmail();
+                    otherParticipantName = email != null ? email.split("@")[0] : "Unknown";
+                    log.debug("User {} has no name field, using email prefix: {}", otherParticipantId, otherParticipantName);
+                }
+            } else {
+                log.warn("User not found with ID: {}", otherParticipantId);
+                otherParticipantName = "Unknown User";
+            }
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid ObjectId format for {}: {}", otherParticipantId, e.getMessage());
+            otherParticipantName = "Unknown User";
+        } catch (Exception e) {
+            log.error("Failed to fetch user info for {}: {}", otherParticipantId, e.getMessage(), e);
+            otherParticipantName = "Unknown User";
+        }
         
         ConversationResponse response = ConversationResponse.builder()
                 .id(conversation.getId())
@@ -156,15 +195,10 @@ public class ConversationService {
                 .lastMessageSenderId(conversation.getLastMessageSenderId())
                 .unreadCount(unreadCount)
                 .otherParticipantId(otherParticipantId)
+                .otherParticipantName(otherParticipantName) // Set the actual username
                 .build();
         
-        // TODO: Enrich with user information from User service
-        // For now, we'll leave these fields null
-        // In a real implementation, you would call the User service to get:
-        // - otherParticipantName
-        // - otherParticipantAvatar
-        // - otherParticipantOnline status
-        
+        log.debug("Mapped conversation response with otherParticipantName: {}", otherParticipantName);
         return response;
     }
 }

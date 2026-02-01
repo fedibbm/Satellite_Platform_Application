@@ -6,8 +6,11 @@ import com.enit.satellite_platform.modules.messaging.entities.*;
 import com.enit.satellite_platform.modules.messaging.exceptions.*;
 import com.enit.satellite_platform.modules.messaging.repositories.ConversationRepository;
 import com.enit.satellite_platform.modules.messaging.repositories.MessageRepository;
+import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.User;
+import com.enit.satellite_platform.modules.user_management.normal_user_service.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,13 +38,17 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final ConversationRepository conversationRepository;
     private final MessagingFileStorageConfig fileStorageConfig;
+    private final UserRepository userRepository;
 
     /**
      * Sends a text message from one user to another.
      */
     @Transactional
     public MessageResponse sendTextMessage(String senderId, String recipientId, String content) {
-        log.info("Sending text message from {} to {}", senderId, recipientId);
+        log.info("========== SENDING TEXT MESSAGE ==========");
+        log.info("Sender ID: {}", senderId);
+        log.info("Recipient ID: {}", recipientId);
+        log.info("Content: {}", content);
         
         // Find or create conversation
         Conversation conversation = findOrCreateConversation(senderId, recipientId);
@@ -291,19 +298,28 @@ public class MessageService {
      * Finds or creates a conversation between two users.
      */
     private Conversation findOrCreateConversation(String userId1, String userId2) {
-        log.debug("Finding or creating conversation between {} and {}", userId1, userId2);
+        log.info("========== FINDING OR CREATING CONVERSATION ==========");
+        log.info("User 1 ID: {}", userId1);
+        log.info("User 2 ID: {}", userId2);
         
         Set<String> participants = new java.util.HashSet<>(java.util.Arrays.asList(userId1, userId2));
+        log.info("Participants Set: {}", participants);
         
         // Check if conversation already exists
+        log.info("Querying for existing conversation with participants: {}", participants);
         java.util.Optional<Conversation> existing = conversationRepository.findByParticipants(participants);
         
         if (existing.isPresent()) {
-            log.debug("Found existing conversation: {}", existing.get().getId());
+            log.info("✓ FOUND EXISTING CONVERSATION: {}", existing.get().getId());
+            log.info("  - Participants: {}", existing.get().getParticipants());
+            log.info("  - Last message: {}", existing.get().getLastMessageAt());
             return existing.get();
         }
         
+        log.warn("✗ NO EXISTING CONVERSATION FOUND - Creating new one");
+        
         // Create new conversation
+        log.info("Creating new conversation with participants: {}", participants);
         Conversation conversation = Conversation.builder()
                 .participants(participants)
                 .createdAt(LocalDateTime.now())

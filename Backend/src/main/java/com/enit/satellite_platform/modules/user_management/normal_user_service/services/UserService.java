@@ -342,7 +342,7 @@ public class UserService {
         logger.warn("User details updated for {}, but tokens were not re-issued in this flow.", userId);
         // Returning null might cause issues if the controller expects a response.
         // Let's modify the controller later to handle this. For now, return a response with null tokens.
-        return new TokenResponse(null, null, null, 0, null, savedUser.getUsername(), savedUser.getEmail(), null);
+        return new TokenResponse(null, null, null, 0, null, savedUser.getUsername(), savedUser.getEmail(), null, null);
         // TODO: Revisit token re-issuance strategy after user update.
     }
 

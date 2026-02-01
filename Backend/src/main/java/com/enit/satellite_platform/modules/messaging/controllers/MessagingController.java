@@ -6,6 +6,8 @@ import com.enit.satellite_platform.modules.messaging.exceptions.InvalidFileExcep
 import com.enit.satellite_platform.modules.messaging.exceptions.UnauthorizedAccessException;
 import com.enit.satellite_platform.modules.messaging.services.ConversationService;
 import com.enit.satellite_platform.modules.messaging.services.MessageService;
+import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.User;
+import com.enit.satellite_platform.modules.user_management.normal_user_service.repositories.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +48,20 @@ public class MessagingController {
     private final MessageService messageService;
     private final ConversationService conversationService;
     private final MessagingFileStorageConfig fileStorageConfig;
+    private final UserRepository userRepository;
+    
+    /**
+     * Gets the current user's ObjectId from their email.
+     */
+    private String getCurrentUserId(Authentication authentication) {
+        String email = authentication.getName();
+        log.info("Getting user ID for email: {}", email);
+        String userId = userRepository.findByEmail(email)
+                .map(user -> user.getId().toString())
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+        log.info("Resolved email {} to ObjectId: {}", email, userId);
+        return userId;
+    }
 
     /**
      * Sends a text message.
@@ -58,7 +74,7 @@ public class MessagingController {
             @Valid @RequestBody SendMessageRequest request,
             Authentication authentication) {
         
-        String senderId = authentication.getName(); // Assumes user ID is in authentication
+        String senderId = getCurrentUserId(authentication); // Get ObjectId instead of email
         
         MessageResponse response = messageService.sendTextMessage(
                 senderId, 
@@ -85,7 +101,7 @@ public class MessagingController {
             @RequestParam(value = "caption", required = false) String caption,
             Authentication authentication) {
         
-        String senderId = authentication.getName();
+        String senderId = getCurrentUserId(authentication); // Get ObjectId instead of email
         
         MessageResponse response = messageService.sendImageMessage(
                 senderId, 
@@ -107,7 +123,7 @@ public class MessagingController {
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
         
-        String userId = authentication.getName();
+        String userId = getCurrentUserId(authentication); // Get ObjectId instead of email
         
         Page<ConversationResponse> conversations = conversationService.getUserConversations(
                 userId, page, size);
@@ -125,7 +141,7 @@ public class MessagingController {
             @PathVariable String id,
             Authentication authentication) {
         
-        String userId = authentication.getName();
+        String userId = getCurrentUserId(authentication); // Get ObjectId instead of email
         ConversationResponse conversation = conversationService.getConversation(id, userId);
         
         return ResponseEntity.ok(conversation);
@@ -143,7 +159,7 @@ public class MessagingController {
             @RequestParam(defaultValue = "50") int size,
             Authentication authentication) {
         
-        String userId = authentication.getName();
+        String userId = getCurrentUserId(authentication); // Get ObjectId instead of email
         
         Page<MessageResponse> messages = messageService.getConversationMessages(
                 id, userId, page, size);
@@ -161,7 +177,7 @@ public class MessagingController {
             @PathVariable String id,
             Authentication authentication) {
         
-        String userId = authentication.getName();
+        String userId = getCurrentUserId(authentication); // Get ObjectId instead of email
         MessageResponse response = messageService.markAsRead(id, userId);
         
         return ResponseEntity.ok(response);
@@ -177,7 +193,7 @@ public class MessagingController {
             @PathVariable String id,
             Authentication authentication) {
         
-        String userId = authentication.getName();
+        String userId = getCurrentUserId(authentication); // Get ObjectId instead of email
         messageService.markConversationAsRead(id, userId);
         
         return ResponseEntity.ok().build();
@@ -191,7 +207,7 @@ public class MessagingController {
     @GetMapping("/unread-count")
     public ResponseEntity<UnreadCountResponse> getUnreadCount(Authentication authentication) {
         
-        String userId = authentication.getName();
+        String userId = getCurrentUserId(authentication); // Get ObjectId instead of email
         
         long totalUnread = messageService.getUnreadMessageCount(userId);
         long conversationsWithUnread = conversationService.getConversationsWithUnreadCount(userId);
@@ -215,7 +231,7 @@ public class MessagingController {
             @PathVariable String filename,
             Authentication authentication) throws IOException {
         
-        String userId = authentication.getName();
+        String userId = getCurrentUserId(authentication); // Get ObjectId instead of email
         
         // Verify user is participant in the conversation
         conversationService.getConversation(conversationId, userId);

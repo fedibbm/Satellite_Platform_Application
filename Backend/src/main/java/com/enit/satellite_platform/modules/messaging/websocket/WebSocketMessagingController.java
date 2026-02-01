@@ -5,6 +5,7 @@ import com.enit.satellite_platform.modules.messaging.dto.SendMessageRequest;
 import com.enit.satellite_platform.modules.messaging.entities.Message;
 import com.enit.satellite_platform.modules.messaging.services.MessageService;
 import com.enit.satellite_platform.modules.messaging.websocket.dto.TypingIndicator;
+import com.enit.satellite_platform.modules.user_management.normal_user_service.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -28,6 +29,25 @@ public class WebSocketMessagingController {
     private final MessageService messageService;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserPresenceService userPresenceService;
+    private final UserRepository userRepository;
+    
+    /**
+     * Convert email to ObjectId
+     */
+    private String emailToObjectId(String email) {
+        return userRepository.findByEmail(email)
+                .map(user -> user.getId().toString())
+                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+    }
+    
+    /**
+     * Convert ObjectId to email for WebSocket routing
+     */
+    private String objectIdToEmail(String objectId) {
+        return userRepository.findById(new org.bson.types.ObjectId(objectId))
+                .map(user -> user.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + objectId));
+    }
 
     /**
      * Handle real-time message sending via WebSocket.
@@ -37,22 +57,26 @@ public class WebSocketMessagingController {
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload SendMessageRequest request, Principal principal) {
         try {
-            String senderId = principal.getName();
-            log.debug("WebSocket message from {}: {}", senderId, request.getContent());
+            String senderEmail = principal.getName();
+            String senderId = emailToObjectId(senderEmail); // Convert to ObjectId
+            log.debug("WebSocket message from {} ({}): {}", senderEmail, senderId, request.getContent());
             
             // Save message using existing service
             MessageResponse response = messageService.sendTextMessage(senderId, request.getRecipientId(), request.getContent());
             
-            // Send to recipient's private queue
+            // Convert ObjectIds to emails for WebSocket routing
+            String recipientEmail = objectIdToEmail(request.getRecipientId());
+            
+            // Send to recipient's private queue (use email for routing)
             messagingTemplate.convertAndSendToUser(
-                request.getRecipientId(),
+                recipientEmail,
                 "/queue/messages",
                 response
             );
             
-            // Also send back to sender for confirmation
+            // Also send back to sender for confirmation (use email for routing)
             messagingTemplate.convertAndSendToUser(
-                senderId,
+                senderEmail,
                 "/queue/messages",
                 response
             );
@@ -80,18 +104,24 @@ public class WebSocketMessagingController {
      */
     @MessageMapping("/chat.typing")
     public void handleTyping(@Payload TypingIndicator indicator, Principal principal) {
-        indicator.setSenderId(principal.getName());
+        String senderEmail = principal.getName();
+        String senderId = emailToObjectId(senderEmail);  // Convert to ObjectId
+        
+        indicator.setSenderId(senderId);
         indicator.setTimestamp(System.currentTimeMillis());
+        
+        // Convert recipient ObjectId to email for WebSocket routing
+        String recipientEmail = objectIdToEmail(indicator.getRecipientId());
         
         // Send typing indicator to recipient
         messagingTemplate.convertAndSendToUser(
-            indicator.getRecipientId(),
+            recipientEmail,  // Use email for routing
             "/queue/typing",
             indicator
         );
         
-        log.debug("Typing indicator: {} -> {} (typing: {})", 
-                  indicator.getSenderId(), indicator.getRecipientId(), indicator.isTyping());
+        log.debug("Typing indicator: {} ({}) -> {} (typing: {})", 
+                  senderEmail, senderId, recipientEmail, indicator.isTyping());
     }
 
     /**
@@ -102,8 +132,13 @@ public class WebSocketMessagingController {
     @MessageMapping("/chat.read")
     public void handleReadReceipt(@Payload String messageId, Principal principal) {
         try {
-            String userId = principal.getName();
+            String userEmail = principal.getName();
+            String userId = emailToObjectId(userEmail); // Convert to ObjectId
+            
             MessageResponse message = messageService.markAsRead(messageId, userId);
+            
+            // Convert sender ObjectId to email for WebSocket routing
+            String senderEmail = objectIdToEmail(message.getSenderId());
             
             // Notify the original sender that their message was read
             Map<String, Object> receipt = new HashMap<>();
@@ -111,12 +146,12 @@ public class WebSocketMessagingController {
             receipt.put("readBy", userId);
             receipt.put("readAt", message.getReadAt());
             messagingTemplate.convertAndSendToUser(
-                message.getSenderId(),
+                senderEmail,  // Use email for routing
                 "/queue/receipts",
                 receipt
             );
             
-            log.debug("Read receipt sent: message {} read by {}", messageId, userId);
+            log.debug("Read receipt sent: message {} read by {} ({})", messageId, userEmail, userId);
             
         } catch (Exception e) {
             log.error("Error processing read receipt: {}", e.getMessage());

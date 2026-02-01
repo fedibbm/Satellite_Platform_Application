@@ -36,7 +36,8 @@ export default function MessagesPage() {
     loadMessages,
     sendMessage,
     sendTyping,
-    getCurrentUserId
+    getCurrentUserId,
+    getCurrentUserName
   } = useMessaging();
 
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -179,10 +180,11 @@ export default function MessagesPage() {
             filteredConversations.map((conv) => (
               <React.Fragment key={conv.id}>
                 <ListItem
-                  button
+                  component="div"
                   selected={selectedConversation?.id === conv.id}
                   onClick={() => handleSelectConversation(conv)}
                   sx={{
+                    cursor: 'pointer',
                     '&:hover': { bgcolor: 'action.hover' },
                     bgcolor: conv.unreadCount > 0 && selectedConversation?.id !== conv.id
                       ? 'action.selected'
@@ -307,33 +309,38 @@ export default function MessagesPage() {
                       sx={{
                         display: 'flex',
                         justifyContent: isOwn ? 'flex-end' : 'flex-start',
-                        mb: 2
+                        mb: 2,
+                        alignItems: 'flex-end',
+                        gap: 0.5
                       }}
                     >
                       {!isOwn && (
-                        <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: '#667eea' }}>
                           {selectedConversation.otherParticipantName?.charAt(0) || 'U'}
                         </Avatar>
                       )}
                       <Box
                         sx={{
                           maxWidth: '60%',
-                          bgcolor: isOwn ? '#667eea' : 'white',
-                          color: isOwn ? 'white' : 'text.primary',
-                          px: 2,
+                          bgcolor: isOwn ? '#0084ff' : '#e4e6eb',
+                          color: isOwn ? 'white' : '#050505',
+                          px: 2.5,
                           py: 1.5,
-                          borderRadius: 2,
-                          boxShadow: 1
+                          borderRadius: isOwn ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                         }}
                       >
-                        <Typography variant="body1">{msg.content}</Typography>
+                        <Typography variant="body1" sx={{ wordBreak: 'break-word' }}>
+                          {msg.content}
+                        </Typography>
                         <Typography
                           variant="caption"
                           sx={{
                             display: 'block',
                             mt: 0.5,
                             opacity: 0.8,
-                            fontSize: '0.7rem'
+                            fontSize: '0.7rem',
+                            color: isOwn ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.5)'
                           }}
                         >
                           {formatDistanceToNow(new Date(msg.sentAt), { addSuffix: true })}
@@ -345,17 +352,17 @@ export default function MessagesPage() {
                 })
               )}
               {isOtherUserTyping && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <Avatar sx={{ width: 32, height: 32 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5, mb: 2 }}>
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: '#667eea' }}>
                     {selectedConversation.otherParticipantName?.charAt(0) || 'U'}
                   </Avatar>
                   <Box
                     sx={{
-                      bgcolor: 'white',
-                      px: 2,
-                      py: 1,
-                      borderRadius: 2,
-                      boxShadow: 1
+                      bgcolor: '#e4e6eb',
+                      px: 2.5,
+                      py: 1.5,
+                      borderRadius: '18px 18px 18px 4px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                     }}
                   >
                     <Typography variant="body2" color="text.secondary" fontStyle="italic">

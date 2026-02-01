@@ -34,8 +34,29 @@ export default function Header({ title }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMessagingOpen, setIsMessagingOpen] = useState(false);
   const [activePortal, setActivePortal] = useState<'workspace' | 'community'>('workspace');
+  const [displayUsername, setDisplayUsername] = useState<string>('');
   const pathname = usePathname();
   const router = useRouter();
+
+  // Update display username when user changes
+  useEffect(() => {
+    if (user?.username) {
+      setDisplayUsername(user.username);
+    } else {
+      // Fallback: try to read directly from localStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          setDisplayUsername(parsed.username || 'User');
+        } catch (e) {
+          setDisplayUsername('User');
+        }
+      } else {
+        setDisplayUsername('User');
+      }
+    }
+  }, [user]);
 
   // Initialize portal state from localStorage or URL path on mount
   useEffect(() => {
@@ -179,7 +200,7 @@ export default function Header({ title }: HeaderProps) {
               }}
               aria-label="Messages"
             >
-              <Badge badgeContent={unreadCount} color="error">
+              <Badge badgeContent={unreadCount || 0} color="error">
                 <MessageIcon />
               </Badge>
             </IconButton>
@@ -202,11 +223,11 @@ export default function Header({ title }: HeaderProps) {
                 }}
               >
                 <Avatar sx={{ width: 32, height: 32, bgcolor: 'white', color: '#667eea' }}>
-                  {user?.username?.charAt(0) || 'U'}
+                  {displayUsername?.charAt(0) || 'U'}
                 </Avatar>
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                   <Typography variant="body2" sx={{ color: 'white', fontWeight: 600, lineHeight: 1.2 }}>
-                    {user?.username || 'User'}
+                    {displayUsername || 'User'}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.65rem' }}>
                     Click to logout

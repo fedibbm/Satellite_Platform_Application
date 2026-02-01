@@ -46,7 +46,8 @@ export default function MessagingPopup({ onClose, onOpenFull }: MessagingPopupPr
     loadMessages,
     sendMessage,
     sendTyping,
-    getCurrentUserId
+    getCurrentUserId,
+    getCurrentUserName
   } = useMessaging();
 
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -231,28 +232,38 @@ export default function MessagingPopup({ onClose, onOpenFull }: MessagingPopupPr
                       sx={{
                         display: 'flex',
                         justifyContent: isOwn ? 'flex-end' : 'flex-start',
-                        mb: 1
+                        mb: 1,
+                        alignItems: 'flex-end',
+                        gap: 0.5
                       }}
                     >
+                      {!isOwn && (
+                        <Avatar sx={{ width: 24, height: 24, bgcolor: '#667eea', fontSize: '0.7rem' }}>
+                          {selectedConversation.otherParticipantName?.charAt(0) || 'U'}
+                        </Avatar>
+                      )}
                       <Box
                         sx={{
                           maxWidth: '75%',
-                          bgcolor: isOwn ? '#667eea' : 'white',
-                          color: isOwn ? 'white' : 'text.primary',
+                          bgcolor: isOwn ? '#0084ff' : '#e4e6eb',
+                          color: isOwn ? 'white' : '#050505',
                           px: 2,
-                          py: 1,
-                          borderRadius: 2,
-                          boxShadow: 1
+                          py: 1.5,
+                          borderRadius: isOwn ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                         }}
                       >
-                        <Typography variant="body2">{msg.content}</Typography>
+                        <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                          {msg.content}
+                        </Typography>
                         <Typography
                           variant="caption"
                           sx={{
                             display: 'block',
                             mt: 0.5,
                             opacity: 0.7,
-                            fontSize: '0.7rem'
+                            fontSize: '0.7rem',
+                            color: isOwn ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.5)'
                           }}
                         >
                           {formatDistanceToNow(new Date(msg.sentAt), { addSuffix: true })}
@@ -264,10 +275,23 @@ export default function MessagingPopup({ onClose, onOpenFull }: MessagingPopupPr
                 })
               )}
               {isOtherUserTyping && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary" fontStyle="italic">
-                    typing...
-                  </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 0.5, mt: 1 }}>
+                  <Avatar sx={{ width: 24, height: 24, bgcolor: '#667eea', fontSize: '0.7rem' }}>
+                    {selectedConversation.otherParticipantName?.charAt(0) || 'U'}
+                  </Avatar>
+                  <Box
+                    sx={{
+                      bgcolor: '#e4e6eb',
+                      px: 2,
+                      py: 1.5,
+                      borderRadius: '18px 18px 18px 4px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <Typography variant="caption" color="text.secondary" fontStyle="italic">
+                      typing...
+                    </Typography>
+                  </Box>
                 </Box>
               )}
               <div ref={messagesEndRef} />
@@ -335,9 +359,10 @@ export default function MessagingPopup({ onClose, onOpenFull }: MessagingPopupPr
                 filteredConversations.map((conv) => (
                   <React.Fragment key={conv.id}>
                     <ListItem
-                      button
+                      component="div"
                       onClick={() => handleSelectConversation(conv)}
                       sx={{
+                        cursor: 'pointer',
                         '&:hover': { bgcolor: 'action.hover' },
                         bgcolor: conv.unreadCount > 0 ? 'action.selected' : 'transparent'
                       }}

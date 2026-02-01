@@ -18,5 +18,6 @@ public class TokenResponse {
     private List<String> roles;
     private String username;
     private String email;
+    private String id;  // User's ObjectId
     private DeviceInfo deviceInfo;
 }

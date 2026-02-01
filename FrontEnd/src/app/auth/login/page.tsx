@@ -25,7 +25,15 @@ export default function Login() {
     try {
       await authService.login({ username: formData.username, password: formData.password })
       setSuccess('Login successful! Redirecting...')
-      setTimeout(() => router.push('/dashboard'), 1500)
+      
+      // Trigger a storage event to notify other components (like Header) to update
+      window.dispatchEvent(new Event('storage'))
+      
+      // Small delay then redirect
+      setTimeout(() => {
+        router.push('/dashboard')
+        window.location.reload() // Force page reload to ensure all components get fresh user data
+      }, 1500)
     } catch (error: any) {
       console.error('Login error:', error)
       setError(error.message || 'Invalid credentials. Please try again.')
@@ -57,23 +65,24 @@ export default function Login() {
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6 border border-gray-100">
           <form className="space-y-5" onSubmit={handleSubmit}>
-            {/* Username Field */}
+            {/* Email Field */}
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Username
+                Email Address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <input
                   id="username"
-                  type="text"
+                  type="email"
                   required
+                  autoComplete="email"
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#667eea] focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
-                  placeholder="Enter your username"
+                  placeholder="Enter your email"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 />

@@ -47,7 +47,8 @@ public class JwtUtil {
         Date accessTokenExpiry = new Date(now.getTime() + jwtConfig.getExpirationTime());
         
         Map<String, Object> claims = Map.of(
-            "name", user.getUsername(),
+            "name", user.getName(),  // Use the actual name field, not getUsername() which returns email
+            "email", user.getEmail(),
             "roles", user.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .collect(Collectors.toList())
@@ -77,6 +78,7 @@ public class JwtUtil {
             roles,
             user.getName(),
             user.getEmail(),
+            user.getId().toString(),  // Include user's ObjectId
             deviceInfo
         );
     }

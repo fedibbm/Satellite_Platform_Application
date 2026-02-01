@@ -44,13 +44,14 @@ public interface ConversationRepository extends MongoRepository<Conversation, St
 
     /**
      * Finds a conversation between two specific users.
-     * The participants set must match exactly (order doesn't matter due to Set).
+     * Uses $all to match both participants regardless of order, and $size to ensure exactly 2.
      * 
      * Usage: To check if a conversation already exists before creating a new one
      * 
      * @param participants Set containing exactly 2 user IDs
      * @return Optional containing the conversation if found
      */
+    @Query("{ 'participants': { $all: ?0, $size: 2 } }")
     Optional<Conversation> findByParticipants(Set<String> participants);
 
     /**
@@ -59,6 +60,7 @@ public interface ConversationRepository extends MongoRepository<Conversation, St
      * @param participants Set of 2 user IDs
      * @return true if conversation exists
      */
+    @Query("{ 'participants': { $all: ?0, $size: 2 } }")
     boolean existsByParticipants(Set<String> participants);
 
     /**

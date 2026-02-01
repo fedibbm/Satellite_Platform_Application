@@ -59,7 +59,7 @@ public class AuthController {
             return ResponseEntity.ok(tokenResponse);
         } catch (InvalidCredentialsException e) {
             // Return TokenResponse with null tokens on error
-            return ResponseEntity.badRequest().body(new TokenResponse(null, null, e.getMessage(), 0, null, null, null, null));
+            return ResponseEntity.badRequest().body(new TokenResponse(null, null, e.getMessage(), 0, null, null, null, null, null));
         }
     }
 
@@ -127,12 +127,12 @@ public class AuthController {
             // Check if tokens were actually re-issued (they are null in the current implementation)
             if (tokenResponse.getAccessToken() == null) {
                 // Return a specific response indicating success but no new tokens
-                return ResponseEntity.ok(new TokenResponse(null, null, "User updated successfully. Please re-authenticate if needed.", 0, null, tokenResponse.getUsername(), tokenResponse.getEmail(), null));
+                return ResponseEntity.ok(new TokenResponse(null, null, "User updated successfully. Please re-authenticate if needed.", 0, null, tokenResponse.getUsername(), tokenResponse.getEmail(), null, null));
             }
             return ResponseEntity.ok(tokenResponse);
         } catch (UsernameNotFoundException | InvalidCredentialsException | SecurityException e) {
             // Return TokenResponse with null tokens on error
-            return ResponseEntity.badRequest().body(new TokenResponse(null, null, e.getMessage(), 0, null, null, null, null));
+            return ResponseEntity.badRequest().body(new TokenResponse(null, null, e.getMessage(), 0, null, null, null, null, null));
         }
     }
 
@@ -207,7 +207,7 @@ public class AuthController {
             TokenResponse tokenResponse = jwtUtil.refreshToken(refreshTokenRequest.getRefreshToken(), request, user);
             return ResponseEntity.ok(tokenResponse);
         } catch (InvalidTokenException e) {
-            return ResponseEntity.badRequest().body(new TokenResponse(null, null, e.getMessage(), 0, null, null, null, null));
+            return ResponseEntity.badRequest().body(new TokenResponse(null, null, e.getMessage(), 0, null, null, null, null, null));
         }
     }
 }
