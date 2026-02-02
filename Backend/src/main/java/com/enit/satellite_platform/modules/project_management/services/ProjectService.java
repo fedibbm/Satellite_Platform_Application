@@ -256,8 +256,7 @@ public class ProjectService {
     // Use the renamed method to exclude soft-deleted projects
     Page<Project> projects = projectRepository.findByOwnerIdAndDeletedFalse(new ObjectId(owner.getId()), pageable);
     if (projects.isEmpty()) {
-      logger.warn("No non-deleted projects found for email: {}", email); // Updated log message
-      throw new ProjectNotFoundException("No projects found for user: " + email);
+      logger.info("No projects found for email: {} - returning empty list", email);
     }
     return projectMapper.toDTOPage(projects);
   }
