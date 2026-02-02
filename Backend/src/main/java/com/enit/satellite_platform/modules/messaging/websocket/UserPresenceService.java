@@ -1,5 +1,7 @@
 package com.enit.satellite_platform.modules.messaging.websocket;
 
+import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.User;
+import com.enit.satellite_platform.modules.user_management.normal_user_service.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -23,8 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class UserPresenceService {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final UserRepository userRepository;
     
-    // Map of userId -> set of session IDs (a user can have multiple sessions/devices)
+    // Map of userId (ObjectId) -> set of session IDs (a user can have multiple sessions/devices)
     private final Map<String, ConcurrentHashMap<String, Boolean>> userSessions = new ConcurrentHashMap<>();
 
     /**
@@ -37,11 +40,17 @@ public class UserPresenceService {
         String sessionId = headerAccessor.getSessionId();
         
         if (user != null && sessionId != null) {
-            String userId = user.getName();
-            userSessions.computeIfAbsent(userId, k -> new ConcurrentHashMap<>()).put(sessionId, true);
+            String email = user.getName(); // Email from JWT
+            String userId = getUserIdFromEmail(email);
             
-            log.info("User connected: {} (session: {})", userId, sessionId);
-            broadcastUserStatus(userId, true);
+            if (userId != null) {
+                userSessions.computeIfAbsent(userId, k -> new ConcurrentHashMap<>()).put(sessionId, true);
+                
+                log.info("User connected: {} (email: {}, session: {})", userId, email, sessionId);
+                broadcastUserStatus(userId, true);
+            } else {
+                log.warn("Could not resolve email to userId: {}", email);
+            }
         }
     }
 
@@ -55,20 +64,24 @@ public class UserPresenceService {
         String sessionId = headerAccessor.getSessionId();
         
         if (user != null && sessionId != null) {
-            String userId = user.getName();
-            ConcurrentHashMap<String, Boolean> sessions = userSessions.get(userId);
+            String email = user.getName(); // Email from JWT
+            String userId = getUserIdFromEmail(email);
             
-            if (sessions != null) {
-                sessions.remove(sessionId);
+            if (userId != null) {
+                ConcurrentHashMap<String, Boolean> sessions = userSessions.get(userId);
                 
-                // If user has no more active sessions, mark as offline
-                if (sessions.isEmpty()) {
-                    userSessions.remove(userId);
-                    log.info("User disconnected: {} (last session: {})", userId, sessionId);
-                    broadcastUserStatus(userId, false);
-                } else {
-                    log.info("User session closed: {} (session: {}), {} sessions remaining", 
-                             userId, sessionId, sessions.size());
+                if (sessions != null) {
+                    sessions.remove(sessionId);
+                    
+                    // If user has no more active sessions, mark as offline
+                    if (sessions.isEmpty()) {
+                        userSessions.remove(userId);
+                        log.info("User disconnected: {} (email: {}, last session: {})", userId, email, sessionId);
+                        broadcastUserStatus(userId, false);
+                    } else {
+                        log.info("User session closed: {} (email: {}, session: {}), {} sessions remaining", 
+                                 userId, email, sessionId, sessions.size());
+                    }
                 }
             }
         }
@@ -104,5 +117,19 @@ public class UserPresenceService {
         Map<String, Integer> result = new ConcurrentHashMap<>();
         userSessions.forEach((userId, sessions) -> result.put(userId, sessions.size()));
         return result;
+    }
+
+    /**
+     * Convert email to ObjectId userId.
+     */
+    private String getUserIdFromEmail(String email) {
+        try {
+            return userRepository.findByEmail(email)
+                    .map(user -> user.getId().toString())
+                    .orElse(null);
+        } catch (Exception e) {
+            log.error("Error resolving email to userId: {}", email, e);
+            return null;
+        }
     }
 }

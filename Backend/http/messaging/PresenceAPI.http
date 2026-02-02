@@ -1,0 +1,16 @@
+### Messaging - User Presence API Tests
+### Make sure to set the JWT token in the Authorization header
+
+@baseUrl = http://localhost:8080/api/messaging
+@token = YOUR_JWT_TOKEN_HERE
+
+### Get all online users
+GET {{baseUrl}}/online-users
+Authorization: Bearer {{token}}
+
+### Check if a specific user is online
+### Replace USER_ID with actual ObjectId
+GET {{baseUrl}}/users/USER_ID/online
+Authorization: Bearer {{token}}
+
+###

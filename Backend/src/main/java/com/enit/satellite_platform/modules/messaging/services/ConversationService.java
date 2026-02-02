@@ -5,6 +5,7 @@ import com.enit.satellite_platform.modules.messaging.entities.Conversation;
 import com.enit.satellite_platform.modules.messaging.exceptions.ConversationNotFoundException;
 import com.enit.satellite_platform.modules.messaging.exceptions.UnauthorizedAccessException;
 import com.enit.satellite_platform.modules.messaging.repositories.ConversationRepository;
+import com.enit.satellite_platform.modules.messaging.websocket.UserPresenceService;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.User;
 import com.enit.satellite_platform.modules.user_management.normal_user_service.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class ConversationService {
 
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
+    private final UserPresenceService userPresenceService;
 
     /**
      * Finds or creates a conversation between two users.
@@ -186,6 +188,9 @@ public class ConversationService {
             otherParticipantName = "Unknown User";
         }
         
+        // Check if other participant is online
+        boolean isOnline = userPresenceService.isUserOnline(otherParticipantId);
+        
         ConversationResponse response = ConversationResponse.builder()
                 .id(conversation.getId())
                 .createdAt(conversation.getCreatedAt())
@@ -196,9 +201,10 @@ public class ConversationService {
                 .unreadCount(unreadCount)
                 .otherParticipantId(otherParticipantId)
                 .otherParticipantName(otherParticipantName) // Set the actual username
+                .otherParticipantOnline(isOnline) // Set current online status
                 .build();
         
-        log.debug("Mapped conversation response with otherParticipantName: {}", otherParticipantName);
+        log.debug("Mapped conversation response with otherParticipantName: {}, online: {}", otherParticipantName, isOnline);
         return response;
     }
 }

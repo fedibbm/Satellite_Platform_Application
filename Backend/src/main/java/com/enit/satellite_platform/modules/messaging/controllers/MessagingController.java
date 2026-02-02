@@ -25,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 /**
  * REST Controller for messaging operations.
@@ -49,6 +50,7 @@ public class MessagingController {
     private final ConversationService conversationService;
     private final MessagingFileStorageConfig fileStorageConfig;
     private final UserRepository userRepository;
+    private final com.enit.satellite_platform.modules.messaging.websocket.UserPresenceService userPresenceService;
     
     /**
      * Gets the current user's ObjectId from their email.
@@ -218,6 +220,39 @@ public class MessagingController {
                 .build();
         
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Gets currently online users.
+     * 
+     * GET /api/messaging/online-users
+     */
+    @GetMapping("/online-users")
+    public ResponseEntity<Map<String, Integer>> getOnlineUsers(Authentication authentication) {
+        // Verify user is authenticated
+        getCurrentUserId(authentication);
+        
+        Map<String, Integer> onlineUsers = userPresenceService.getOnlineUsers();
+        
+        return ResponseEntity.ok(onlineUsers);
+    }
+
+    /**
+     * Checks if a specific user is online.
+     * 
+     * GET /api/messaging/users/{userId}/online
+     */
+    @GetMapping("/users/{userId}/online")
+    public ResponseEntity<Map<String, Boolean>> checkUserOnline(
+            @PathVariable String userId,
+            Authentication authentication) {
+        
+        // Verify user is authenticated
+        getCurrentUserId(authentication);
+        
+        boolean isOnline = userPresenceService.isUserOnline(userId);
+        
+        return ResponseEntity.ok(Map.of("online", isOnline));
     }
 
     /**
