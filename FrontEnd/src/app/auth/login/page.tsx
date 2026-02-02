@@ -29,10 +29,9 @@ export default function Login() {
       // Trigger a storage event to notify other components (like Header) to update
       window.dispatchEvent(new Event('storage'))
       
-      // Small delay then redirect
+      // Use window.location.href for full page navigation with reload
       setTimeout(() => {
-        router.push('/dashboard')
-        window.location.reload() // Force page reload to ensure all components get fresh user data
+        window.location.href = '/dashboard'
       }, 1500)
     } catch (error: any) {
       console.error('Login error:', error)
