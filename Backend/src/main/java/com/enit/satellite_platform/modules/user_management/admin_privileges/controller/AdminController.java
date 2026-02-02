@@ -256,7 +256,6 @@ public class AdminController {
                             schema = @Schema(implementation = GenericResponse.class)))
     })
     @GetMapping("/users")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getAllUsers() {
         try {
             List<User> users = adminServices.getAllUsers();
