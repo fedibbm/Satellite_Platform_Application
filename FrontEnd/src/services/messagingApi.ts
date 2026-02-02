@@ -73,5 +73,19 @@ export const messagingApi = {
     const api = createAuthenticatedAxios();
     const response = await api.get('/unread-count');
     return response.data;
+  },
+
+  // Get currently online users
+  getOnlineUsers: async (): Promise<Record<string, number>> => {
+    const api = createAuthenticatedAxios();
+    const response = await api.get('/online-users');
+    return response.data;
+  },
+
+  // Check if a specific user is online
+  checkUserOnline: async (userId: string): Promise<{ online: boolean }> => {
+    const api = createAuthenticatedAxios();
+    const response = await api.get(`/users/${userId}/online`);
+    return response.data;
   }
 };

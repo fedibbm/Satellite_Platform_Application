@@ -30,6 +30,19 @@ export const useMessaging = () => {
         await wsService.connect();
         setIsConnected(true);
         
+        // Fetch current online users after connection
+        try {
+          const onlineUsersData = await messagingApi.getOnlineUsers();
+          const onlineMap: Record<string, boolean> = {};
+          Object.keys(onlineUsersData).forEach(userId => {
+            onlineMap[userId] = true;
+          });
+          setOnlineUsers(onlineMap);
+          console.log('Loaded initial online users:', onlineMap);
+        } catch (error) {
+          console.error('Failed to load online users:', error);
+        }
+        
         // Reset loadedOnce when WebSocket connects so conversations load
         loadedOnce.current = false;
       } catch (error) {
