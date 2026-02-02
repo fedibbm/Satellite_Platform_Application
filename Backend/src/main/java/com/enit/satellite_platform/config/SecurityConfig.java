@@ -60,6 +60,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(requests -> requests
                         // Allow unauthenticated access to authentication endpoints
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Allow unauthenticated access to community publications (read-only)
+                        .requestMatchers(HttpMethod.GET, "/api/community/publications/**").permitAll()
                         // Allow unauthenticated access to WebSocket handshake/info endpoints
                         .requestMatchers("/ws/**").permitAll() // WebSocket endpoint for messaging
                         .requestMatchers("/ws-logs/**").permitAll() // Keep existing rule for audit logs if needed

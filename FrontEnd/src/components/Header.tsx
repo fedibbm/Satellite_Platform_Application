@@ -1,6 +1,6 @@
 'use client'
 
-import { AppBar, Toolbar, Typography, Box, ButtonBase, Badge, Avatar, IconButton } from '@mui/material';
+import { AppBar, Toolbar, Typography, Box, ButtonBase, Badge, Avatar, IconButton, Button } from '@mui/material';
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
@@ -23,6 +23,7 @@ import ArticleIcon from '@mui/icons-material/Article';
 import PeopleIcon from '@mui/icons-material/People';
 import ForumIcon from '@mui/icons-material/Forum';
 import MessagingPopup from './MessagingPopup';
+import AddIcon from '@mui/icons-material/Add';
 
 interface HeaderProps {
   title: string;
@@ -178,6 +179,28 @@ export default function Header({ title }: HeaderProps) {
 
           {/* Right Section: Search, Messages, User */}
           <div className="ml-4 pl-4 border-l border-white border-opacity-30 flex items-center space-x-2">
+            {/* Create Publication Button (Community mode only) */}
+            {activePortal === 'community' && loggedIn && (
+              <Link href="/community/publications/create">
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  sx={{
+                    background: 'white',
+                    color: '#667eea',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    '&:hover': {
+                      background: 'rgba(255, 255, 255, 0.9)',
+                    },
+                  }}
+                >
+                  Create Publication
+                </Button>
+              </Link>
+            )}
+
             {/* Search Icon */}
             <IconButton
               size="small"
@@ -301,6 +324,18 @@ export default function Header({ title }: HeaderProps) {
               <span className="text-sm">Community</span>
             </button>
           </div>
+
+          {/* Create Publication Button (Community mode - Mobile) */}
+          {activePortal === 'community' && loggedIn && (
+            <Link
+              href="/community/publications/create"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center justify-center space-x-2 px-4 py-3 bg-white text-purple-600 rounded-lg font-semibold shadow-md hover:bg-opacity-90 transition-all mb-2"
+            >
+              <AddIcon sx={{ fontSize: 22 }} />
+              <span>Create Publication</span>
+            </Link>
+          )}
 
           {navLinks.map((link) => {
             const Icon = link.icon;

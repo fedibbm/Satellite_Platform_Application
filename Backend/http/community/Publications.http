@@ -1,0 +1,75 @@
+### Community Publications API Test File
+### Base URL
+@baseUrl = http://localhost:8080/api/community/publications
+@authToken = YOUR_JWT_TOKEN_HERE
+
+### First, authenticate to get a token (run this first!)
+POST http://localhost:8080/api/user/auth/login
+Content-Type: application/json
+
+{
+  "username": "your-email@example.com",
+  "password": "your-password"
+}
+
+###
+# 1. Create a new publication (PUBLISHED) - Comprehensive NDVI Tutorial
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "title": "Understanding NDVI in Satellite Imagery Analysis",
+  "description": "A comprehensive guide to understanding and applying Normalized Difference Vegetation Index in satellite imagery analysis for agricultural monitoring and environmental assessment",
+  "content": "<h1>Introduction to NDVI</h1><p>The Normalized Difference Vegetation Index (NDVI) is one of the most widely used indicators for assessing vegetation health and vigor from satellite imagery. This powerful metric has revolutionized how we monitor agricultural lands, forests, and ecosystems worldwide.</p><h2>What is NDVI?</h2><p>NDVI is a numerical indicator that uses the visible and near-infrared bands of the electromagnetic spectrum to analyze remote sensing measurements. The index ranges from -1 to +1, where higher values indicate healthier vegetation.</p><h2>How NDVI Works</h2><p>NDVI is calculated using the formula:</p><p><strong>NDVI = (NIR - Red) / (NIR + Red)</strong></p><p>Where:</p><ul><li><strong>NIR</strong> is the near-infrared band (typically 0.76-0.9 μm)</li><li><strong>Red</strong> is the red visible band (typically 0.6-0.7 μm)</li></ul><h2>Understanding NDVI Values</h2><ul><li><strong>-1 to 0</strong>: Water, clouds, snow, bare soil</li><li><strong>0 to 0.2</strong>: Bare soil, rocks, sand</li><li><strong>0.2 to 0.5</strong>: Sparse vegetation, grasslands, senescing crops</li><li><strong>0.5 to 0.8</strong>: Moderate to dense vegetation</li><li><strong>0.8 to 1.0</strong>: Very dense, healthy vegetation</li></ul><h2>Applications in Agriculture</h2><p>Farmers and agronomists use NDVI for:</p><ul><li>Crop health monitoring</li><li>Identifying areas of stress or disease</li><li>Optimizing irrigation and fertilization</li><li>Yield prediction and forecasting</li><li>Precision agriculture applications</li></ul><h2>Working with Sentinel-2 Data</h2><p>Sentinel-2 satellites provide excellent data for NDVI calculation with their 10-meter resolution bands:</p><ul><li><strong>Band 4 (Red)</strong>: 665 nm, 10m resolution</li><li><strong>Band 8 (NIR)</strong>: 842 nm, 10m resolution</li></ul><h3>Processing Steps</h3><ol><li>Download Sentinel-2 imagery for your area of interest</li><li>Extract Band 4 (Red) and Band 8 (NIR)</li><li>Apply atmospheric correction if needed</li><li>Calculate NDVI using the formula</li><li>Apply color ramps for visualization</li></ol><h2>Best Practices</h2><p>When working with NDVI, keep these tips in mind:</p><ul><li>Always use cloud-free imagery for accurate results</li><li>Compare NDVI values across similar dates for temporal analysis</li><li>Consider seasonal variations in vegetation</li><li>Validate with ground truth data when possible</li><li>Use multiple dates to track vegetation changes over time</li></ul><h2>Common Pitfalls to Avoid</h2><ul><li><strong>Cloud contamination</strong>: Even thin clouds can affect NDVI values</li><li><strong>Atmospheric effects</strong>: Use atmospherically corrected data when available</li><li><strong>Soil background</strong>: Can affect NDVI in areas with sparse vegetation</li><li><strong>Saturation</strong>: Very dense vegetation may saturate NDVI values</li></ul><h2>Advanced Techniques</h2><p>For more sophisticated analysis, consider these enhanced vegetation indices:</p><ul><li><strong>EVI (Enhanced Vegetation Index)</strong>: Better for high biomass areas</li><li><strong>SAVI (Soil Adjusted Vegetation Index)</strong>: Reduces soil background effects</li><li><strong>NDWI (Normalized Difference Water Index)</strong>: For water content analysis</li></ul><h2>Tools and Platforms</h2><p>Several platforms make NDVI analysis accessible:</p><ul><li>Google Earth Engine for large-scale analysis</li><li>QGIS with Semi-Automatic Classification Plugin</li><li>Python with libraries like rasterio and numpy</li><li>This platform's built-in NDVI calculator!</li></ul><h2>Conclusion</h2><p>NDVI remains a fundamental tool in remote sensing and precision agriculture. By understanding how to properly calculate and interpret NDVI values, you can gain valuable insights into vegetation health and make data-driven decisions for agricultural management and environmental monitoring.</p><p>Start exploring NDVI with your own satellite imagery today and unlock the power of remote sensing for your projects!</p>",
+  "tags": ["NDVI", "Remote Sensing", "Vegetation Analysis", "Satellite Imagery", "Sentinel-2", "Agriculture", "Tutorial"],
+  "status": "PUBLISHED",
+  "readingTime": 8
+}
+
+###
+# 2. Get all published publications
+GET {{baseUrl}}?page=0&size=10&sortBy=createdAt&sortDir=DESC
+
+###
+# 3. Get publication by ID
+@publicationId = 6782a1b2c3d4e5f6g7h8i9j0
+GET {{baseUrl}}/{{publicationId}}
+
+###
+# 4. Update a publication
+PUT {{baseUrl}}/{{publicationId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "title": "Understanding NDVI - Updated Edition",
+  "description": "An updated comprehensive guide with new insights"
+}
+
+###
+# 5. Like a publication
+POST {{baseUrl}}/{{publicationId}}/like
+Authorization: Bearer {{authToken}}
+
+###
+# 6. Search publications
+GET {{baseUrl}}/search?query=NDVI&page=0&size=10
+
+###
+# 7. Get publications by tag
+GET {{baseUrl}}/tag/Remote%20Sensing?page=0&size=10
+
+###
+# 8. Get trending publications
+GET {{baseUrl}}/trending?page=0&size=10
+
+###
+# 9. Get my publications
+GET {{baseUrl}}/my?page=0&size=10
+Authorization: Bearer {{authToken}}
+
+###
+# 10. Delete a publication
+DELETE {{baseUrl}}/{{publicationId}}
+Authorization: Bearer {{authToken}}
