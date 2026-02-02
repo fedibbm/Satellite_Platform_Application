@@ -210,4 +210,20 @@ public class AuthController {
             return ResponseEntity.badRequest().body(new TokenResponse(null, null, e.getMessage(), 0, null, null, null, null, null));
         }
     }
+
+    @Operation(summary = "Get all users", description = "Retrieve list of all users in the system")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Users retrieved successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/users")
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            List<User> users = adminServices.getAllUsers();
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(new GenericResponse<>("ERROR", "Failed to retrieve users: " + e.getMessage()));
+        }
+    }
 }
