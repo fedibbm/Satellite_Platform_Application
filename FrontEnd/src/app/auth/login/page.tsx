@@ -31,7 +31,7 @@ export default function Login() {
       
       // Use window.location.href for full page navigation with reload
       setTimeout(() => {
-        window.location.href = '/dashboard'
+        router.push('/dashboard')
       }, 1500)
     } catch (error: any) {
       console.error('Login error:', error)
