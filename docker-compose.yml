@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # =============================================================================
   # DATABASES & CACHE
@@ -91,7 +89,7 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=True
       - GEE_SERVICE_ACCOUNT=satellite-platform-application@adept-lodge-478616-i2.iam.gserviceaccount.com
-      - GEE_KEY_FILE=/app/satellite-platform-application-f7154aa5ce46.json
+      - GEE_KEY_PATH=/app/satellite-platform-application-f7154aa5ce46.json
       - GEE_PROJECT_ID=adept-lodge-478616-i2
     volumes:
       - ./gee_app_with_cache_logic:/app
