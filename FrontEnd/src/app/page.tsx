@@ -3,10 +3,23 @@
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import LoginIcon from '@mui/icons-material/Login'
+import { useState, useEffect } from 'react'
 
 export default function Home() {
   const { isLoggedIn } = useAuth()
-  const loggedIn = isLoggedIn()
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null) // null = loading
+  const [mounted, setMounted] = useState(false)
+
+  // Check login status on mount (client-side only)
+  useEffect(() => {
+    setMounted(true)
+    setLoggedIn(isLoggedIn())
+  }, [isLoggedIn])
+
+  // Don't render until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return null
+  }
 
   const features = [
     {

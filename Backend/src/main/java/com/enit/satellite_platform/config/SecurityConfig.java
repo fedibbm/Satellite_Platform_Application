@@ -98,12 +98,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Specify the frontend origin explicitly instead of wildcard when using credentials
-        configuration.setAllowedOriginPatterns(Arrays.asList("*")); // Allow frontend dev server
+        // Specify the frontend origin explicitly - required when using credentials
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080")); // Frontend dev server
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "content-type", "x-requested-with")); // Added common headers
-        configuration.setExposedHeaders(Arrays.asList("Authorization"));
-        configuration.setAllowCredentials(true); // Explicitly set allowCredentials
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "content-type", "x-requested-with", "Cookie")); // Added Cookie header
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Set-Cookie"));
+        configuration.setAllowCredentials(true); // Allow cookies to be sent
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

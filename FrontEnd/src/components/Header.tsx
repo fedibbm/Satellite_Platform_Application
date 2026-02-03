@@ -36,8 +36,16 @@ export default function Header({ title }: HeaderProps) {
   const [isMessagingOpen, setIsMessagingOpen] = useState(false);
   const [activePortal, setActivePortal] = useState<'workspace' | 'community'>('workspace');
   const [displayUsername, setDisplayUsername] = useState<string>('');
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = loading
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Check login status on mount (client-side only)
+  useEffect(() => {
+    setMounted(true);
+    setLoggedIn(isLoggedIn());
+  }, [isLoggedIn]);
 
   // Update display username when user changes
   useEffect(() => {
@@ -77,8 +85,6 @@ export default function Header({ title }: HeaderProps) {
   const handleLogout = () => {
     logout();
   }
-
-  const loggedIn = isLoggedIn();
 
   const workspaceLinks = [
     { name: 'Home', href: '/', icon: HomeIcon },
@@ -180,7 +186,7 @@ export default function Header({ title }: HeaderProps) {
           {/* Right Section: Search, Messages, User */}
           <div className="ml-4 pl-4 border-l border-white border-opacity-30 flex items-center space-x-2">
             {/* Create Publication Button (Community mode only) */}
-            {activePortal === 'community' && loggedIn && (
+            {mounted && activePortal === 'community' && loggedIn && (
               <Link href="/community/publications/create">
                 <Button
                   variant="contained"
@@ -229,43 +235,76 @@ export default function Header({ title }: HeaderProps) {
             </IconButton>
 
             {/* User Section */}
-            {loggedIn ? (
-              <ButtonBase
-                onClick={handleLogout}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  px: 2,
-                  py: 1,
-                  borderRadius: 2,
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  }
-                }}
-              >
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'white', color: '#667eea' }}>
-                  {displayUsername?.charAt(0) || 'U'}
-                </Avatar>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <Typography variant="body2" sx={{ color: 'white', fontWeight: 600, lineHeight: 1.2 }}>
-                    {displayUsername || 'User'}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.65rem' }}>
-                    Click to logout
-                  </Typography>
-                </Box>
-                <LogoutIcon sx={{ fontSize: 18, color: 'white', ml: 0.5 }} />
-              </ButtonBase>
-            ) : (
-              <Link
-                href="/auth/login"
-                className="flex items-center space-x-2 px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-opacity-90 transition-all duration-200 font-semibold shadow-md"
-              >
-                <LoginIcon sx={{ fontSize: 20 }} />
-                <span>Sign In</span>
-              </Link>
+            {mounted && (
+              <>
+                {loggedIn ? (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'stretch',
+                      gap: 0,
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Profile Button - Left Side */}
+                    <ButtonBase
+                      onClick={() => router.push('/profile')}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        px: 2,
+                        py: 1,
+                        borderRadius: '8px 0 0 8px',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        }
+                      }}
+                    >
+                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'white', color: '#667eea' }}>
+                        {displayUsername?.charAt(0) || 'U'}
+                      </Avatar>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <Typography variant="body2" sx={{ color: 'white', fontWeight: 600, lineHeight: 1.2 }}>
+                          {displayUsername || 'User'}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.65rem' }}>
+                          View profile
+                        </Typography>
+                      </Box>
+                    </ButtonBase>
+
+                    {/* Logout Button - Right Side (Icon Only) */}
+                    <ButtonBase
+                      onClick={handleLogout}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        px: 1.5,
+                        borderRadius: '0 8px 8px 0',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                        }
+                      }}
+                    >
+                      <LogoutIcon sx={{ fontSize: 18, color: 'white' }} />
+                    </ButtonBase>
+                  </Box>
+                ) : (
+                  <Link
+                    href="/auth/login"
+                    className="flex items-center space-x-2 px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-opacity-90 transition-all duration-200 font-semibold shadow-md"
+                  >
+                    <LoginIcon sx={{ fontSize: 20 }} />
+                    <span>Sign In</span>
+                  </Link>
+                )}
+              </>
             )}
           </div>
         </nav>

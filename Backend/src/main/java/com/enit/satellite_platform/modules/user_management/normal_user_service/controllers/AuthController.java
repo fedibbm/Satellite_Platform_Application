@@ -30,7 +30,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest; // Add HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse; // Add HttpServletResponse
+import jakarta.servlet.http.Cookie; // Add Cookie
 import jakarta.validation.Valid; // Add Valid annotation
+import org.springframework.http.ResponseCookie; // Add ResponseCookie for SameSite support
 
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
@@ -53,9 +56,32 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "Invalid credentials")
     })
     @PostMapping("/auth/signin")
-    public ResponseEntity<TokenResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) { // Add request, change return type
+    public ResponseEntity<TokenResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response) {
         try {
-            TokenResponse tokenResponse = authService.accessUserAcount(loginRequest, request); // Pass request
+            TokenResponse tokenResponse = authService.accessUserAcount(loginRequest, request);
+            
+            // Set access token as HTTP-only cookie with SameSite=Lax
+            ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenResponse.getAccessToken())
+                .httpOnly(true)
+                .secure(false) // Set to true in production with HTTPS
+                .path("/")
+                .maxAge(24 * 60 * 60) // 24 hours
+                .sameSite("Lax") // Allow sending cookie on same-site and top-level navigation
+                .build();
+            response.addHeader("Set-Cookie", accessTokenCookie.toString());
+            
+            // Set refresh token as HTTP-only cookie with SameSite=Lax
+            if (tokenResponse.getRefreshToken() != null) {
+                ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenResponse.getRefreshToken())
+                    .httpOnly(true)
+                    .secure(false) // Set to true in production with HTTPS
+                    .path("/")
+                    .maxAge(7 * 24 * 60 * 60) // 7 days
+                    .sameSite("Lax")
+                    .build();
+                response.addHeader("Set-Cookie", refreshTokenCookie.toString());
+            }
+            
             return ResponseEntity.ok(tokenResponse);
         } catch (InvalidCredentialsException e) {
             // Return TokenResponse with null tokens on error
@@ -193,10 +219,29 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "Invalid or expired refresh token")
     })
     @PostMapping("/auth/refresh")
-    public ResponseEntity<TokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest refreshTokenRequest, HttpServletRequest request) {
+    public ResponseEntity<TokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest refreshTokenRequest, HttpServletRequest request, HttpServletResponse response) {
         try {
+            // Get refresh token from request body or cookie
+            String refreshTokenValue = refreshTokenRequest.getRefreshToken();
+            if (refreshTokenValue == null) {
+                // Try to get from cookie
+                Cookie[] cookies = request.getCookies();
+                if (cookies != null) {
+                    for (Cookie cookie : cookies) {
+                        if ("refreshToken".equals(cookie.getName())) {
+                            refreshTokenValue = cookie.getValue();
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (refreshTokenValue == null) {
+                throw new InvalidTokenException("No refresh token provided");
+            }
+            
             // First find the refresh token
-            RefreshToken storedRefreshToken = refreshTokenService.findByToken(refreshTokenRequest.getRefreshToken())
+            RefreshToken storedRefreshToken = refreshTokenService.findByToken(refreshTokenValue)
                 .orElseThrow(() -> new InvalidTokenException("Invalid refresh token"));
             
             // Get the user from the stored token
@@ -204,7 +249,30 @@ public class AuthController {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
             
             // Now pass both the refresh token and user to generate new tokens
-            TokenResponse tokenResponse = jwtUtil.refreshToken(refreshTokenRequest.getRefreshToken(), request, user);
+            TokenResponse tokenResponse = jwtUtil.refreshToken(refreshTokenValue, request, user);
+            
+            // Set new access token as HTTP-only cookie
+            ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenResponse.getAccessToken())
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(24 * 60 * 60)
+                .sameSite("Lax")
+                .build();
+            response.addHeader("Set-Cookie", accessTokenCookie.toString());
+            
+            // Set new refresh token as HTTP-only cookie if it was rotated
+            if (tokenResponse.getRefreshToken() != null) {
+                ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokenResponse.getRefreshToken())
+                    .httpOnly(true)
+                    .secure(false)
+                    .path("/")
+                    .maxAge(7 * 24 * 60 * 60)
+                    .sameSite("Lax")
+                    .build();
+                response.addHeader("Set-Cookie", refreshTokenCookie.toString());
+            }
+            
             return ResponseEntity.ok(tokenResponse);
         } catch (InvalidTokenException e) {
             return ResponseEntity.badRequest().body(new TokenResponse(null, null, e.getMessage(), 0, null, null, null, null, null));
@@ -225,5 +293,34 @@ public class AuthController {
             return ResponseEntity.internalServerError()
                     .body(new GenericResponse<>("ERROR", "Failed to retrieve users: " + e.getMessage()));
         }
+    }
+
+    @Operation(summary = "Logout user and clear authentication cookies")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Logged out successfully")
+    })
+    @PostMapping("/auth/logout")
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        // Clear access token cookie
+        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", "")
+            .httpOnly(true)
+            .secure(false)
+            .path("/")
+            .maxAge(0)
+            .sameSite("Lax")
+            .build();
+        response.addHeader("Set-Cookie", accessTokenCookie.toString());
+        
+        // Clear refresh token cookie
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", "")
+            .httpOnly(true)
+            .secure(false)
+            .path("/")
+            .maxAge(0)
+            .sameSite("Lax")
+            .build();
+        response.addHeader("Set-Cookie", refreshTokenCookie.toString());
+        
+        return ResponseEntity.ok(new GenericResponse<>("SUCCESS", "Logged out successfully"));
     }
 }

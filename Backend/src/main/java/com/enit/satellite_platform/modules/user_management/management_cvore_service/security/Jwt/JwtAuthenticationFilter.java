@@ -15,6 +15,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
 import java.io.IOException;
 import org.slf4j.Logger; // Add Logger import
 import org.slf4j.LoggerFactory; // Add LoggerFactory import
@@ -92,16 +93,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Extracts the JWT token from the Authorization header of the given HTTP request.
+     * Extracts the JWT token from the Authorization header or cookie of the given HTTP request.
      *
-     * @param request The HTTP request containing the JWT token in the Authorization header.
-     * @return The JWT token, or null if the header is missing or does not contain a valid token.
+     * @param request The HTTP request containing the JWT token in the Authorization header or cookie.
+     * @return The JWT token, or null if neither header nor cookie contains a valid token.
      */
     private String extractJwtToken(HttpServletRequest request) {
+        // First, try to get token from Authorization header (for backwards compatibility)
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             return header.substring(7);
         }
+        
+        // If no Authorization header, try to get token from cookie
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        
         return null;
     }
 

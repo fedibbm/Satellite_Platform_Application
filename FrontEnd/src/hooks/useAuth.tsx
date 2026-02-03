@@ -38,55 +38,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check localStorage on initial mount (client-side only)
     useEffect(() => {
         try {
-            const storedToken = localStorage.getItem("token");
+            // With HTTP-only cookies, we don't store tokens in localStorage anymore
+            // Just check for user object
             const storedUser = localStorage.getItem("user");
 
-            console.log(
-                "[useAuth] Initial check - Token exists:",
-                !!storedToken
-            );
             console.log("[useAuth] Initial check - User exists:", !!storedUser);
 
-            if (storedToken) {
-                // Token exists, set it
-                setToken(storedToken);
+            if (storedUser) {
+                // User exists, parse and set it
+                try {
+                    const parsedUser: User = JSON.parse(storedUser);
+                    console.log("[useAuth] Parsed user:", parsedUser);
 
-                // Try to load user if it exists
-                if (storedUser) {
-                    try {
-                        const parsedUser: User = JSON.parse(storedUser);
-                        console.log("[useAuth] Parsed user:", parsedUser);
-
-                        // Basic validation - check if it has at least an id
-                        if (parsedUser && parsedUser.id) {
-                            setUser(parsedUser);
-                        } else {
-                            console.warn(
-                                "[useAuth] User object missing id field, keeping token but clearing user"
-                            );
-                            localStorage.removeItem("user");
-                            setUser(null);
-                        }
-                    } catch (parseError) {
-                        console.error(
-                            "[useAuth] Failed to parse user JSON:",
-                            parseError
+                    // Basic validation - check if it has at least an id
+                    if (parsedUser && parsedUser.id) {
+                        setUser(parsedUser);
+                        setToken("cookie-based-auth"); // Set dummy token to indicate authenticated
+                    } else {
+                        console.warn(
+                            "[useAuth] User object missing id field, clearing user"
                         );
                         localStorage.removeItem("user");
                         setUser(null);
+                        setToken(null);
                     }
-                } else {
-                    console.log(
-                        "[useAuth] No user object found, but token exists - this is OK"
+                } catch (parseError) {
+                    console.error(
+                        "[useAuth] Failed to parse user JSON:",
+                        parseError
                     );
+                    localStorage.removeItem("user");
                     setUser(null);
+                    setToken(null);
                 }
             } else {
-                console.log("[useAuth] No token found");
-                // No token, clear everything
-                if (storedUser) {
-                    localStorage.removeItem("user");
-                }
+                console.log("[useAuth] No user found - not authenticated");
                 setToken(null);
                 setUser(null);
             }

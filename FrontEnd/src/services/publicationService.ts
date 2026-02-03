@@ -182,7 +182,13 @@ class PublicationService {
     
     const url = queryParams.toString() ? `${BASE_URL}/my?${queryParams}` : `${BASE_URL}/my`;
     const response = await httpClient.get<{ status: string; message: string; data: PublicationPageResponse<Publication> }>(url);
-    return response.data;
+    console.log('getMyPublications raw response:', response);
+    // httpClient returns the full response object, so we need to check if it has nested data
+    if (response && typeof response === 'object' && 'data' in response) {
+      return response.data;
+    }
+    // If response is already the page response
+    return response as PublicationPageResponse<Publication>;
   }
 }
 

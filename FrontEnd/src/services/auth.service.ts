@@ -38,30 +38,25 @@ class AuthService {
       this.loginAttempts = 0;
       this.loginCooldownEnd = 0;
 
-      // Store the JWT token - Access directly from the response object
-      const accessToken = response?.accessToken;
-      if (accessToken) {
-        localStorage.setItem('token', accessToken);
-        
-        // Backend returns id, username and email in the response
-        const user = {
-          id: response.id, // User's ObjectId from backend
-          username: response.username || response.email, // The actual username from registration
-          email: response.email,
-          roles: response.roles || []
-        };
-        
-        console.log('[AuthService] Login response:', response);
-        console.log('[AuthService] Storing user:', user);
-        
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('userRoles', JSON.stringify(response.roles || []));
-        
-        return response;
-      } else {
-        throw new Error('No token received from server');
-      }
-
+      // Tokens are now in HTTP-only cookies, just store user info
+      const user = {
+        id: response.id,
+        username: response.username || response.email,
+        email: response.email,
+        roles: response.roles || []
+      };
+      
+      console.log('[AuthService] Login successful!');
+      console.log('[AuthService] Response:', response);
+      console.log('[AuthService] Storing user:', user);
+      console.log('[AuthService] Cookies should be set by browser automatically');
+      
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('userRoles', JSON.stringify(response.roles || []));
+      
+      console.log('[AuthService] User stored in localStorage');
+      console.log('[AuthService] Check Application > Cookies > localhost:8080 for accessToken');
+      
       return response;
     } catch (error: any) {
       // Handle rate limiting specifically
@@ -139,31 +134,42 @@ class AuthService {
   }
 
   getToken(): string | null {
-    // Check if running in a browser environment
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token');
-    }
-    return null; // Return null if not in a browser (e.g., SSR)
+    // Tokens are now in HTTP-only cookies, not accessible via JavaScript
+    // This method is kept for backwards compatibility but returns null
+    // Authentication is handled by cookies sent automatically with requests
+    return null;
   }
 
   isAuthenticated(): boolean {
-    // Check if running in a browser environment before getting token
+    // Check if user info exists in localStorage
+    // The actual auth is validated by the backend via cookies
     if (typeof window === 'undefined') {
-      return false; // Cannot be authenticated on the server without a token check mechanism
+      return false;
     }
-    const token = this.getToken();
-    return !!token;
+    const user = localStorage.getItem('user');
+    return !!user;
   }
 
-  logout() {
+  async logout() {
     // Check for window existence before accessing localStorage and window
     if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user'); // Remove the stored user object
-        // Clear legacy items if they exist
+        // Call backend logout endpoint to clear cookies
+        try {
+          await httpClient.post(AUTH_ENDPOINTS.LOGOUT, {}, {
+            requiresAuth: true,
+          });
+        } catch (error) {
+          console.error('Logout error:', error);
+          // Continue with local cleanup even if backend call fails
+        }
+        
+        // Clear local storage
+        localStorage.removeItem('user');
         localStorage.removeItem('userRoles');
         localStorage.removeItem('username');
         localStorage.removeItem('email');
+        localStorage.removeItem('token'); // Remove legacy token if exists
+        
         window.location.href = '/auth/login';
     }
   }

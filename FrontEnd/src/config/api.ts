@@ -9,6 +9,7 @@ export const AUTH_ENDPOINTS = {
   REGISTER: '/api/auth/signup',
   RESET_PASSWORD: '/api/auth/reset-password',
   GET_ROLES: '/api/auth/roles',
+  LOGOUT: '/api/auth/logout',
 };
 
 // Project endpoints

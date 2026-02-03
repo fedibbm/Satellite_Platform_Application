@@ -42,7 +42,8 @@ class HttpClient {
 
         const requestHeaders = new Headers(initialHeaders);
 
-
+        // Note: JWT is now sent via HTTP-only cookies, no need for Authorization header
+        // Keeping this code for backwards compatibility with non-cookie endpoints if any
         if (requiresAuth) {
             const token = authService.getToken();
             if (token) {
@@ -66,15 +67,19 @@ class HttpClient {
 
         try {
             this.lastRequestTime = Date.now();
-            const response = await fetch(fullUrl, { // Use fullUrl
+            const response = await fetch(fullUrl, {
                 headers: requestHeaders,
-                body: body, // Pass the body along
+                body: body,
+                credentials: 'include', // Enable sending cookies with requests
                 ...rest,
             });
 
             if (!response.ok) {
                 if (response.status === 401) {
                     // Handle unauthorized access
+                    console.error('[httpClient] Got 401 Unauthorized for:', fullUrl);
+                    console.error('[httpClient] Response headers:', response.headers);
+                    console.error('[httpClient] Did cookies get sent? Check Network tab');
                     authService.logout();
                     window.location.href = '/auth/login';
                     throw new Error('Unauthorized access');
