@@ -9,7 +9,7 @@ const BASE_URL = '/api/admin';
 // --- User Management ---
 
 export const getAllUsers = async (): Promise<User[]> => {
-  const response = await httpClient.get('/api/users');
+  const response = await httpClient.get('/api/users'); // Public endpoint for all authenticated users
   // Assuming the backend returns the user list directly or within a 'data' field
   return response.data || response;
 };

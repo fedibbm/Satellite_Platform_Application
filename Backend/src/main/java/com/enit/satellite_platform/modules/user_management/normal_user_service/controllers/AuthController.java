@@ -279,9 +279,10 @@ public class AuthController {
         }
     }
 
-    @Operation(summary = "Get all users", description = "Retrieve list of all users in the system")
+    @Operation(summary = "Get all users", description = "Retrieve list of all users in the system (accessible to all authenticated users)")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Users retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/users")
