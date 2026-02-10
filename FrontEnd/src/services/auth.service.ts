@@ -86,21 +86,6 @@ class AuthService {
         roles: roles || ['THEMATICIAN']  // Backend expects roles as array, default to THEMATICIAN if not provided
       }, { requiresAuth: false });
       
-      const accessToken = response.data?.accessToken || response.accessToken;
-      if (accessToken) {
-        localStorage.setItem('token', accessToken);
-
-        // Store additional user information if available
-        if (response.data?.roles) {
-          localStorage.setItem('userRoles', JSON.stringify(response.data.roles));
-        }
-        if (response.data?.username) {
-          localStorage.setItem('username', response.data.username);
-        }
-        if (response.data?.email) {
-          localStorage.setItem('email', response.data.email);
-        }
-      }
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;

@@ -342,6 +342,8 @@ export default function Register() {
               </div>
             )}
 
+           
+
             {/* Submit Button */}
             <button
               type="submit"
