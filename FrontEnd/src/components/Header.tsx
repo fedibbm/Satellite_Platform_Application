@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth';
-import { useMessaging } from '../hooks/useMessaging';
+import { useUnreadCount } from '../hooks/useUnreadCount'; // Changed to lightweight hook
 import { usePathname, useRouter } from 'next/navigation';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -31,28 +31,27 @@ interface HeaderProps {
 
 export default function Header({ title }: HeaderProps) {
   const { user, logout, isLoggedIn } = useAuth();
-  const { unreadCount } = useMessaging();
+  const { unreadCount } = useUnreadCount(); // Changed to lightweight hook
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMessagingOpen, setIsMessagingOpen] = useState(false);
   const [activePortal, setActivePortal] = useState<'workspace' | 'community'>('workspace');
   const [displayUsername, setDisplayUsername] = useState<string>('');
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = loading
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
-  // Check login status on mount (client-side only)
+  // Consolidate all initialization in a single useEffect
   useEffect(() => {
     setMounted(true);
-    setLoggedIn(isLoggedIn());
-  }, [isLoggedIn]);
+    const isUserLoggedIn = isLoggedIn();
+    setLoggedIn(isUserLoggedIn);
 
-  // Update display username when user changes
-  useEffect(() => {
+    // Set display username
     if (user?.username) {
       setDisplayUsername(user.username);
-    } else {
-      // Fallback: try to read directly from localStorage
+    } else if (isUserLoggedIn) {
+      // Only read from localStorage if logged in and user is not in context
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
@@ -61,26 +60,22 @@ export default function Header({ title }: HeaderProps) {
         } catch (e) {
           setDisplayUsername('User');
         }
-      } else {
-        setDisplayUsername('User');
       }
+    } else {
+      setDisplayUsername('User');
     }
-  }, [user]);
 
-  // Initialize portal state from localStorage or URL path on mount
-  useEffect(() => {
-    // Check if current path is a community route
+    // Initialize portal state
     if (pathname.startsWith('/community')) {
       setActivePortal('community');
       localStorage.setItem('activePortal', 'community');
     } else {
-      // Try to load from localStorage, default to workspace
       const savedPortal = localStorage.getItem('activePortal') as 'workspace' | 'community' | null;
       if (savedPortal) {
         setActivePortal(savedPortal);
       }
     }
-  }, [pathname]);
+  }, [pathname, user, isLoggedIn]); // Add dependencies to prevent multiple effects
 
   const handleLogout = () => {
     logout();
