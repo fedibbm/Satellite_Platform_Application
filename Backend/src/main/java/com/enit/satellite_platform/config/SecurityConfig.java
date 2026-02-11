@@ -77,6 +77,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
                         // Restrict user endpoints to users with ROLE_THEMATICIAN
                         .requestMatchers("/api/thematician/**").hasRole("THEMATICIAN")
+                        // Allow authenticated users to access workflow endpoints
+                        .requestMatchers("/api/workflows/**").authenticated()
                         // Require authentication for all other requests
                         .anyRequest().authenticated())
                 // Set session management to stateless for JWT

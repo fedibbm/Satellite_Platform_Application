@@ -34,8 +34,7 @@ export default function WorkflowDetailPage() {
   const loadWorkflow = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || '';
-      const data = await workflowService.getWorkflowById(workflowId, token);
+      const data = await workflowService.getWorkflowById(workflowId);
       setWorkflow(data);
       
       // Load current version nodes and edges
@@ -75,11 +74,9 @@ export default function WorkflowDetailPage() {
 
   const handleSave = async () => {
     try {
-      const token = localStorage.getItem('token') || '';
       await workflowService.updateWorkflow(
         workflowId,
-        { nodes, edges, changelog: 'Updated workflow design' },
-        token
+        { nodes, edges, changelog: 'Updated workflow design' }
       );
       alert('Workflow saved successfully!');
     } catch (error) {
@@ -90,8 +87,7 @@ export default function WorkflowDetailPage() {
 
   const handleExecute = async () => {
     try {
-      const token = localStorage.getItem('token') || '';
-      await workflowService.executeWorkflow(workflowId, token);
+      await workflowService.executeWorkflow(workflowId);
       alert('Workflow execution started!');
       loadWorkflow(); // Reload to show new execution
     } catch (error) {

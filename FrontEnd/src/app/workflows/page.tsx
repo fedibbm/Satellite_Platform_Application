@@ -33,15 +33,16 @@ export default function WorkflowsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || '';
       const [workflowsData, templatesData] = await Promise.all([
-        workflowService.getAllWorkflows(token),
-        workflowService.getWorkflowTemplates(token),
+        workflowService.getAllWorkflows(),
+        workflowService.getWorkflowTemplates(),
       ]);
-      setWorkflows(workflowsData);
-      setTemplates(templatesData);
+      setWorkflows(workflowsData || []);
+      setTemplates(templatesData || []);
     } catch (error) {
       console.error('Error loading workflows:', error);
+      setWorkflows([]);
+      setTemplates([]);
     } finally {
       setLoading(false);
     }
@@ -58,8 +59,7 @@ export default function WorkflowsPage() {
   const handleExecuteWorkflow = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     try {
-      const token = localStorage.getItem('token') || '';
-      await workflowService.executeWorkflow(id, token);
+      await workflowService.executeWorkflow(id);
       alert('Workflow execution started!');
     } catch (error) {
       console.error('Error executing workflow:', error);

@@ -21,15 +21,13 @@ export default function NewWorkflowPage() {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || '';
       const workflow = await workflowService.createWorkflow(
         {
           name,
           description,
           nodes: [],
           edges: [],
-        },
-        token
+        }
       );
       router.push(`/workflows/${workflow.id}`);
     } catch (error) {
