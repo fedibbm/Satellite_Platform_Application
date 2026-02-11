@@ -1,6 +1,7 @@
 package com.enit.satellite_platform.modules.messaging.config;
 
 import com.enit.satellite_platform.modules.messaging.websocket.WebSocketAuthInterceptor;
+import com.enit.satellite_platform.modules.messaging.websocket.WebSocketHandshakeInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -9,7 +10,7 @@ import org.springframework.web.socket.config.annotation.*;
 
 /**
  * WebSocket configuration for real-time messaging.
- * Configures STOMP over WebSocket with JWT authentication.
+ * Configures STOMP over WebSocket with JWT authentication via HTTP-only cookies.
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -17,6 +18,7 @@ import org.springframework.web.socket.config.annotation.*;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+    private final WebSocketHandshakeInterceptor webSocketHandshakeInterceptor;
 
     /**
      * Configure message broker options.
@@ -39,12 +41,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     /**
      * Register STOMP endpoints for WebSocket connection.
      * Clients connect to: ws://localhost:8080/ws
+     * Handshake interceptor authenticates via HTTP-only cookies during upgrade.
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
-                .withSockJS(); // Enable SockJS fallback for browsers without WebSocket support
+                .setAllowedOrigins("http://localhost:3000") // Allow frontend origin
+                .addInterceptors(webSocketHandshakeInterceptor) // Authenticate during HTTP handshake
+                .withSockJS();
     }
 
     /**

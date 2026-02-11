@@ -35,22 +35,38 @@ class WebSocketService {
   constructor() {
     if (typeof window !== 'undefined') {
       // Only initialize in browser environment
-      this.initializeClient();
+      // Don't initialize immediately - wait for connect() call
     }
   }
 
+  private getCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      return parts.pop()?.split(';').shift() || null;
+    }
+    return null;
+  }
+
   private initializeClient() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No auth token found, WebSocket connection will fail');
+    // Check if user is authenticated by checking for user in localStorage
+    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    if (!userStr) {
+      console.warn('No user found, WebSocket connection will fail');
       return;
     }
 
+    console.log('Initializing WebSocket client with cookie-based authentication');
+
+    // HTTP-only cookies are automatically sent with the WebSocket handshake
+    // No need to extract or pass tokens manually
     this.client = new Client({
-      webSocketFactory: () => new SockJS(WS_URL),
-      connectHeaders: {
-        Authorization: `Bearer ${token}`
-      },
+      webSocketFactory: () => new SockJS(WS_URL, null, {
+        // Browser will automatically include HTTP-only cookies in handshake
+        withCredentials: true
+      }),
+      connectHeaders: {},
       debug: (str) => {
         console.log('[STOMP]', str);
       },
