@@ -61,10 +61,12 @@ public class AuthController {
             TokenResponse tokenResponse = authService.accessUserAcount(loginRequest, request);
             
             // Set access token as HTTP-only cookie with SameSite=Lax
+            // domain=localhost allows cookie to work on both localhost:3000 (Next.js) and localhost:8080 (WebSocket)
             ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", tokenResponse.getAccessToken())
                 .httpOnly(true)
                 .secure(false) // Set to true in production with HTTPS
                 .path("/")
+                .domain("localhost") // Share cookie across all localhost ports
                 .maxAge(24 * 60 * 60) // 24 hours
                 .sameSite("Lax") // Allow sending cookie on same-site and top-level navigation
                 .build();
@@ -76,6 +78,7 @@ public class AuthController {
                     .httpOnly(true)
                     .secure(false) // Set to true in production with HTTPS
                     .path("/")
+                    .domain("localhost") // Share cookie across all localhost ports
                     .maxAge(7 * 24 * 60 * 60) // 7 days
                     .sameSite("Lax")
                     .build();
@@ -256,6 +259,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(false)
                 .path("/")
+                .domain("localhost")
                 .maxAge(24 * 60 * 60)
                 .sameSite("Lax")
                 .build();
@@ -267,6 +271,7 @@ public class AuthController {
                     .httpOnly(true)
                     .secure(false)
                     .path("/")
+                    .domain("localhost")
                     .maxAge(7 * 24 * 60 * 60)
                     .sameSite("Lax")
                     .build();
@@ -307,6 +312,7 @@ public class AuthController {
             .httpOnly(true)
             .secure(false)
             .path("/")
+            .domain("localhost")
             .maxAge(0)
             .sameSite("Lax")
             .build();
@@ -317,6 +323,7 @@ public class AuthController {
             .httpOnly(true)
             .secure(false)
             .path("/")
+            .domain("localhost")
             .maxAge(0)
             .sameSite("Lax")
             .build();

@@ -8,6 +8,7 @@ import {
   SendMessageRequest
 } from '@/types/messaging';
 
+// Connect directly to backend WebSocket (cookies set with domain=localhost work across ports)
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8080/ws';
 
 export type MessageCallback = (message: Message) => void;
