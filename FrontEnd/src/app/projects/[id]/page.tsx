@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { Box, Typography, Button, CircularProgress } from '@mui/material';
 
@@ -11,12 +12,43 @@ import { useProjectAnalysis } from '@/hooks/useProjectAnalysis';
 import { useProjectSharing } from '@/hooks/useProjectSharing';
 import { useGeeImage } from '@/hooks/useGeeImage';
 
-// Import Components
+// Import Non-Heavy Components
 import ProjectHeader from '@/components/Project/ProjectHeader';
 import ProjectTabs, { TabPanel } from '@/components/Project/ProjectTabs';
-import ProjectDetailsTabPanel from '@/components/Project/ProjectDetailsTabPanel';
-import ProjectImagesTabPanel from '@/components/Project/ProjectImagesTabPanel';
-import ProjectAnalysisTabPanel from '@/components/Project/ProjectAnalysisTabPanel';
+
+// Lazy load heavy tab components
+const ProjectDetailsTabPanel = dynamic(
+  () => import('@/components/Project/ProjectDetailsTabPanel'),
+  {
+    loading: () => (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    ),
+  }
+);
+
+const ProjectImagesTabPanel = dynamic(
+  () => import('@/components/Project/ProjectImagesTabPanel'),
+  {
+    loading: () => (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    ),
+  }
+);
+
+const ProjectAnalysisTabPanel = dynamic(
+  () => import('@/components/Project/ProjectAnalysisTabPanel'),
+  {
+    loading: () => (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    ),
+  }
+);
 
 export default function ProjectDetailPage() {
     const params = useParams();

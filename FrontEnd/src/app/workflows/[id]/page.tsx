@@ -1,11 +1,24 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, useParams } from 'next/navigation';
 import { workflowService } from '@/services/workflow.service';
 import { Workflow, WorkflowNode, WorkflowEdge } from '@/types/workflow';
-import WorkflowCanvas from '@/components/Workflow/WorkflowCanvas';
-import NodePalette from '@/components/Workflow/NodePalette';
+
+// Lazy load heavy workflow components
+const WorkflowCanvas = dynamic(() => import('@/components/Workflow/WorkflowCanvas'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-96">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+  ),
+});
+
+const NodePalette = dynamic(() => import('@/components/Workflow/NodePalette'), {
+  ssr: false,
+});
 import {
   ArrowLeftIcon,
   PlayIcon,

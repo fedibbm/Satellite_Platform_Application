@@ -1,10 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Box, Container, Typography, Alert, CircularProgress } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import PublicationEditor from '@/components/PublicationEditor';
 import publicationService from '@/services/publicationService';
+
+// Lazy load the heavy PublicationEditor component
+const PublicationEditor = dynamic(() => import('@/components/PublicationEditor'), {
+  ssr: false,
+  loading: () => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+      <CircularProgress />
+    </Box>
+  ),
+});
 
 interface PublicationMetadata {
   title: string;

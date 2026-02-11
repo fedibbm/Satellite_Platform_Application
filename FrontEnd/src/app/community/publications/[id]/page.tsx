@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   Box, 
@@ -26,14 +27,24 @@ import {
   Share, 
   AccessTime
 } from '@mui/icons-material';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeHighlight from 'rehype-highlight';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github.css';
 import publicationService, { Publication } from '@/services/publicationService';
+
+// Create a wrapper component for ReactMarkdown with all plugins
+const MarkdownViewer = dynamic(
+  () => import('@/components/MarkdownViewer'),
+  {
+    ssr: false,
+    loading: () => (
+      <Box sx={{ p: 3 }}>
+        <Skeleton variant="text" height={40} />
+        <Skeleton variant="text" height={30} />
+        <Skeleton variant="rectangular" height={200} sx={{ mt: 2 }} />
+      </Box>
+    ),
+  }
+);
 
 export default function PublicationDetailPage() {
   const params = useParams();
@@ -319,12 +330,7 @@ export default function PublicationDetailPage() {
                     fontWeight: 600
                   }
                 }}>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeKatex, rehypeHighlight]}
-                  >
-                    {publication.content}
-                  </ReactMarkdown>
+                  <MarkdownViewer content={publication.content} />
                 </Box>
 
                 {/* Engagement - Minimal */}
