@@ -10,6 +10,13 @@ const nextConfig = {
     NEXT_PUBLIC_IMAGE_API_URL: process.env.NEXT_PUBLIC_IMAGE_API_URL || 'http://localhost:8000',
   },
 
+  // Compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
+  },
+
   // Rewrites to proxy backend requests through Next.js server
   async rewrites() {
     return [
@@ -23,7 +30,8 @@ const nextConfig = {
   // Image optimization
   images: {
     domains: ['localhost'],
-    unoptimized: true,
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60,
   },
 
   // Webpack configuration
@@ -37,6 +45,48 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
+      };
+    }
+
+    // Optimize chunks for better caching and loading
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // MUI components
+            mui: {
+              name: 'mui',
+              test: /[\\/]node_modules[\\/]@mui[\\/]/,
+              priority: 30,
+              reuseExistingChunk: true,
+            },
+            // Leaflet maps
+            leaflet: {
+              name: 'leaflet',
+              test: /[\\/]node_modules[\\/](leaflet|react-leaflet)[\\/]/,
+              priority: 30,
+              reuseExistingChunk: true,
+            },
+            // React Flow
+            reactflow: {
+              name: 'reactflow',
+              test: /[\\/]node_modules[\\/](@xyflow|reactflow)[\\/]/,
+              priority: 30,
+              reuseExistingChunk: true,
+            },
+            // Commons
+            common: {
+              name: 'common',
+              minChunks: 2,
+              priority: 10,
+              reuseExistingChunk: true,
+            },
+          },
+        },
       };
     }
     
@@ -53,9 +103,16 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Skip static page generation errors
+  // Skip static page generation errors & optimize imports
   experimental: {
     missingSuspenseWithCSRBailout: false,
+    optimizePackageImports: [
+      '@mui/material',
+      '@mui/icons-material',
+      'leaflet',
+      'recharts',
+      '@xyflow/react',
+    ],
   },
 };
 
