@@ -1,31 +1,25 @@
-import axios from 'axios';
 import { Project, ProjectStatus } from '@/types/api';
+import { httpClient } from '@/utils/api/http-client';
 
-const API_BASE_URL = 'http://localhost:8080/api/thematician/projects';
+const API_BASE_URL = '/api/thematician/projects';
 
 export interface ProjectSharingRequest {
     projectId: string;
     otherEmail: string;
 }
 
-export const fetchStatistics = async (token: string) => {
+export const fetchStatistics = async () => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/statistics`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: 'application/json',
-            },
+        const response = await httpClient.get(`${API_BASE_URL}/statistics`, {
+            requiresAuth: true
         });
-        return response.data.data as {
+        return response.data as {
             totalProjects: number;
             imagesPerProject: Record<string, number>;
             lastAccessTime?: Record<string, string>;
         };
     } catch (error) {
         console.error('Error fetching statistics:', error);
-        if (axios.isAxiosError(error)) {
-            console.error('Axios error details:', error.response?.data);
-        }
         throw new Error('Failed to fetch statistics');
     }
 };
@@ -50,88 +44,33 @@ export interface ProjectsResponse {
 
 export const getAllProjects = async (page: number = 0, size: number = 10): Promise<PaginatedResponse<Project>> => {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-
-        const response = await axios.get(`${API_BASE_URL}/all`, {
-            params: {
-                page,
-                size
-            },
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
-            }
+        const response = await httpClient.get(`${API_BASE_URL}/all?page=${page}&size=${size}`, {
+            requiresAuth: true
         });
-        return response.data.data;
+        return response.data;
     } catch (error) {
         console.error('Error fetching projects:', error);
-        if (axios.isAxiosError(error)) {
-            if (error.response?.status === 403) {
-                throw new Error('Not authorized to view projects');
-            }
-            if (error.response?.status === 401) {
-                throw new Error('Authentication token expired. Please log in again.');
-            }
-            if (error.response?.data?.message) {
-                throw new Error(error.response.data.message);
-            }
-        }
         throw new Error('Failed to fetch projects');
     }
 };
 
 export const getProject = async (id: string): Promise<Project> => {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-
-        const response = await axios.get(`${API_BASE_URL}/${id}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
-            }
+        const response = await httpClient.get(`${API_BASE_URL}/${id}`, {
+            requiresAuth: true
         });
-        return response.data.data;
+        return response.data;
     } catch (error) {
         console.error('Error fetching project:', error);
-        if (axios.isAxiosError(error)) {
-            const status = error.response?.status;
-            const message = error.response?.data?.message || error.message;
-            if (status === 404) {
-                throw new Error(`Project not found (404)`);
-            } else if (status === 401) {
-                 throw new Error('Authentication token expired. Please log in again.');
-            } else if (status === 403) {
-                 throw new Error('Not authorized to view this project');
-            }
-            // Include status in the generic message if available
-            throw new Error(`Failed to fetch project: ${message}${status ? ` (Status: ${status})` : ''}`);
-        }
-        // Fallback for non-Axios errors
         throw new Error('Failed to fetch project');
     }
 };
 
 export const shareProject = async (request: ProjectSharingRequest): Promise<void> => {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-
-        await axios.post(`${API_BASE_URL}/${request.projectId}/share`, 
+        await httpClient.post(`${API_BASE_URL}/${request.projectId}/share`, 
             { email: request.otherEmail },
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            }
+            { requiresAuth: true }
         );
     } catch (error) {
         console.error('Error sharing project:', error);
@@ -141,20 +80,10 @@ export const shareProject = async (request: ProjectSharingRequest): Promise<void
 
 export const unshareProject = async (request: ProjectSharingRequest): Promise<void> => {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-
-        await axios.post(
+        await httpClient.post(
             `${API_BASE_URL}/${request.projectId}/unshare`,
             { email: request.otherEmail },
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            }
+            { requiresAuth: true }
         );
     } catch (error) {
         console.error('Error unsharing project:', error);
@@ -164,20 +93,10 @@ export const unshareProject = async (request: ProjectSharingRequest): Promise<vo
 
 export const archiveProject = async (id: string): Promise<void> => {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-
-        await axios.post(
+        await httpClient.post(
             `${API_BASE_URL}/${id}/archive`,
             {},
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            }
+            { requiresAuth: true }
         );
     } catch (error) {
         console.error('Error archiving project:', error);
@@ -187,20 +106,10 @@ export const archiveProject = async (id: string): Promise<void> => {
 
 export const unarchiveProject = async (id: string): Promise<void> => {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-
-        await axios.post(
+        await httpClient.post(
             `${API_BASE_URL}/${id}/unarchive`,
             {},
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            }
+            { requiresAuth: true }
         );
     } catch (error) {
         console.error('Error unarchiving project:', error);
@@ -210,16 +119,8 @@ export const unarchiveProject = async (id: string): Promise<void> => {
 
 export const deleteProject = async (id: string): Promise<void> => {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-
-        await axios.delete(`${API_BASE_URL}/${id}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
-            }
+        await httpClient.delete(`${API_BASE_URL}/${id}`, {
+            requiresAuth: true
         });
     } catch (error) {   
         console.error('Error deleting project:', error);
@@ -233,38 +134,18 @@ export const createProject = async (projectData: {
     status?: string;
 }): Promise<Project> => {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-
-        const response = await axios.post(`${API_BASE_URL}/create`, {
+        const response = await httpClient.post(`${API_BASE_URL}/create`, {
             projectName: projectData.projectName,
             description: projectData.description || '',
-            tags: projectData.tags || ['initial'], // Default tags if not provided
-            status: projectData.status || 'CREATED' // Match backend expectation
+            tags: projectData.tags || ['initial'],
+            status: projectData.status || 'CREATED'
         }, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
+            requiresAuth: true
         });
 
-        return response.data.data; // Assuming response follows { data: Project }
+        return response.data;
     } catch (error) {
         console.error('Error creating project:', error);
-        if (axios.isAxiosError(error)) {
-            if (error.response?.status === 403) {
-                throw new Error('Not authorized to create projects');
-            }
-            if (error.response?.status === 401) {
-                throw new Error('Authentication token expired. Please log in again.');
-            }
-            if (error.response?.data?.message) {
-                throw new Error(error.response.data.message);
-            }
-        }
         throw new Error('Failed to create project');
     }
 };
