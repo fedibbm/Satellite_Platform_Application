@@ -6,6 +6,7 @@ import { workflowService } from '@/services/workflow.service';
 import { Workflow, WorkflowNode, WorkflowEdge } from '@/types/workflow';
 import WorkflowCanvas from '@/components/Workflow/WorkflowCanvas';
 import NodePalette from '@/components/Workflow/NodePalette';
+import NodeConfigPanel from '@/components/Workflow/NodeConfigPanel';
 import {
   ArrowLeftIcon,
   PlayIcon,
@@ -24,6 +25,7 @@ export default function WorkflowDetailPage() {
   const [activeTab, setActiveTab] = useState<'canvas' | 'versions' | 'executions' | 'settings'>('canvas');
   const [nodes, setNodes] = useState<WorkflowNode[]>([]);
   const [edges, setEdges] = useState<WorkflowEdge[]>([]);
+  const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
 
   useEffect(() => {
     if (workflowId) {
@@ -70,6 +72,23 @@ export default function WorkflowDetailPage() {
 
   const handleEdgesChange = useCallback((newEdges: WorkflowEdge[]) => {
     setEdges(newEdges);
+  }, []);
+
+  const handleNodeClick = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) {
+      setSelectedNode(node);
+    }
+  }, [nodes]);
+
+  const handleNodeConfigSave = useCallback((nodeId: string, data: any) => {
+    setNodes(prevNodes => 
+      prevNodes.map(node => 
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, ...data } }
+          : node
+      )
+    );
   }, []);
 
   const handleSave = async () => {
@@ -189,8 +208,16 @@ export default function WorkflowDetailPage() {
                 initialEdges={edges}
                 onNodesChange={handleNodesChange}
                 onEdgesChange={handleEdgesChange}
+                onNodeClick={handleNodeClick}
               />
             </div>
+            
+            {/* Node Config Panel */}
+            <NodeConfigPanel
+              node={selectedNode}
+              onClose={() => setSelectedNode(null)}
+              onSave={handleNodeConfigSave}
+            />
           </>
         )}
 

@@ -35,12 +35,11 @@ interface GeeApiResponse {
 }
 
 // Parameters needed specifically for the fetch function call
-// Includes auth token and potentially overrides for params stored elsewhere
+// Includes potentially overrides for params stored elsewhere
 export interface FetchGeeImageServiceParams {
     // Use Partial<GeeParams> as some might have defaults or come from context/hook state
     // The function will merge these with defaults. Region is mandatory here.
     params: Partial<GeeParams> & { region: object }; // Ensure region is present
-    token: string; // Auth token
 }
 
 // Updated response type to reflect actual expected data
@@ -67,7 +66,7 @@ const defaultGeeParams: Partial<GeeParams> = {
 };
 
 export const fetchGeeImage = async (serviceParams: FetchGeeImageServiceParams): Promise<GeeImageResult> => {
-    const { params: inputParams, token } = serviceParams;
+    const { params: inputParams } = serviceParams;
     const url = '/geospatial/gee/service'; // Use relative path if API_BASE_URL is set in httpClient
 
     // Ensure region is correctly extracted (it's mandatory in FetchGeeImageServiceParams)

@@ -42,14 +42,9 @@ class HttpClient {
 
         const requestHeaders = new Headers(initialHeaders);
 
-        // Note: JWT is now sent via HTTP-only cookies, no need for Authorization header
-        // Keeping this code for backwards compatibility with non-cookie endpoints if any
-        if (requiresAuth) {
-            const token = authService.getToken();
-            if (token) {
-                requestHeaders.set('Authorization', `Bearer ${token}`);
-            }
-        }
+        // JWT is now sent via HTTP-only cookies automatically with credentials: 'include'
+        // No need to manually set Authorization header - cookies are sent automatically
+        // The requiresAuth flag is kept for backwards compatibility but doesn't affect headers
 
         // Construct the full URL using the environment variable
         const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
@@ -110,10 +105,17 @@ class HttpClient {
                     } catch (jsonError) {
                         // If JSON parsing fails, try to get the text from the clone
                         const textError = await responseClone.text();
-                        throw new Error(`Request failed: ${textError}`);
+                        throw new Error(textError || `Request failed with status ${response.status}`);
+                    }
+                } else {
+                    // For non-JSON responses (like plain text error messages), read as text
+                    try {
+                        const textError = await response.text();
+                        throw new Error(textError || `Request failed with status ${response.status}`);
+                    } catch (textReadError) {
+                        throw new Error(`Request failed with status ${response.status}`);
                     }
                 }
-                throw new Error(`Request failed with status ${response.status}`);
             }
 
             // Reset rate limit delay on successful request

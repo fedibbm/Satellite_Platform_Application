@@ -77,20 +77,30 @@ public class WorkflowExecutionService {
         // In a real implementation, this would trigger the actual execution
         try {
             executeWorkflowNodes(savedExecution, currentVersion);
+            logger.info("executeWorkflowNodes completed for workflow: {}", workflowId);
         } catch (Exception e) {
-            logger.error("Error executing workflow: {}", workflowId, e);
+            logger.error("Uncaught exception in executeWorkflowNodes for workflow: {} - Type: {}, Message: {}", 
+                workflowId, e.getClass().getSimpleName(), e.getMessage(), e);
             savedExecution.setStatus(ExecutionStatus.FAILED);
             WorkflowLog errorLog = new WorkflowLog();
             errorLog.setTimestamp(LocalDateTime.now());
             errorLog.setNodeId("system");
             errorLog.setLevel(LogLevel.ERROR);
-            errorLog.setMessage("Workflow execution failed: " + e.getMessage());
+            String errorMessage = String.format("Workflow execution failed: %s - %s", 
+                e.getClass().getSimpleName(), e.getMessage());
+            errorLog.setMessage(errorMessage);
             savedExecution.getLogs().add(errorLog);
             savedExecution.setCompletedAt(LocalDateTime.now());
             executionRepository.save(savedExecution);
+            logger.info("Saved execution with FAILED status after uncaught exception");
         }
 
-        return workflowMapper.toExecutionDTO(savedExecution);
+        // Reload execution from database to ensure we have the latest state
+        WorkflowExecution finalExecution = executionRepository.findById(savedExecution.getId())
+                .orElse(savedExecution);
+        
+        logger.info("Returning execution {} with status: {}", finalExecution.getId(), finalExecution.getStatus());
+        return workflowMapper.toExecutionDTO(finalExecution);
     }
 
     private void executeWorkflowNodes(WorkflowExecution execution, WorkflowVersion version) {
@@ -142,16 +152,25 @@ public class WorkflowExecutionService {
                 addLog(execution, node.getId(), LogLevel.INFO, "Starting node execution: " + node.getData().getLabel());
 
                 // Get the executor for this node type
+                logger.debug("Looking up executor for node type: {}", node.getType());
                 NodeExecutor executor = nodeRegistry.getExecutor(node.getType())
-                    .orElseThrow(() -> new RuntimeException("No executor found for node type: " + node.getType()));
+                    .orElseThrow(() -> {
+                        logger.error("No executor found for node type: {}", node.getType());
+                        return new RuntimeException("No executor found for node type: " + node.getType());
+                    });
 
                 // Validate node before execution
+                logger.debug("Validating node: {}", node.getId());
                 if (!executor.validate(node)) {
+                    logger.error("Node validation failed for node: {}", node.getId());
                     throw new RuntimeException("Node validation failed: " + node.getId());
                 }
+                logger.debug("Node validation passed: {}", node.getId());
 
                 // Execute the node
+                logger.debug("Executing node: {} with executor: {}", node.getId(), executor.getClass().getSimpleName());
                 NodeExecutionResult result = executor.execute(node, context);
+                logger.debug("Node execution completed: {}, success: {}", node.getId(), result.isSuccess());
 
                 // Process result
                 if (result.isSuccess()) {
@@ -182,13 +201,18 @@ public class WorkflowExecutionService {
                 executionRepository.save(execution);
 
             } catch (Exception e) {
-                logger.error("Error executing node: {}", node.getId(), e);
-                markExecutionFailed(execution, node.getId(), "Node execution error: " + e.getMessage());
-                throw e;
+                logger.error("Error executing node: {} - Type: {}, Message: {}", 
+                    node.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
+                String detailedError = String.format("Node execution error: %s - %s", 
+                    e.getClass().getSimpleName(), e.getMessage());
+                markExecutionFailed(execution, node.getId(), detailedError);
+                logger.info("Marked execution as FAILED, returning from executeWorkflowNodes");
+                return; // Don't throw, just return after marking as failed
             }
         }
 
         // Mark execution as completed
+        logger.info("All nodes executed successfully, marking execution as COMPLETED");
         execution.setStatus(ExecutionStatus.COMPLETED);
         execution.setCompletedAt(LocalDateTime.now());
         
@@ -197,6 +221,7 @@ public class WorkflowExecutionService {
 
         addLog(execution, "system", LogLevel.INFO, "Workflow execution completed successfully");
         executionRepository.save(execution);
+        logger.info("Execution saved with COMPLETED status");
         
         logger.info("Workflow execution completed: {}", execution.getId());
     }

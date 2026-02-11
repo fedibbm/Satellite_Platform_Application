@@ -29,10 +29,16 @@ export default function NewWorkflowPage() {
           edges: [],
         }
       );
+      
+      if (!workflow || !workflow.id) {
+        throw new Error('Invalid response from server. Please restart the backend.');
+      }
+      
       router.push(`/workflows/${workflow.id}`);
     } catch (error) {
       console.error('Error creating workflow:', error);
-      alert('Failed to create workflow');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create workflow';
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }

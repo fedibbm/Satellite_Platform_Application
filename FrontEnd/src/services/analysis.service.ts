@@ -1,8 +1,7 @@
-import axios from 'axios';
-import { authService } from './auth.service';
+import { httpClient } from '@/utils/api/http-client';
 
-const VEGETATION_API_BASE_URL = 'http://localhost:8080/api/v1/vegetation-indices';
-const PROCESSING_API_BASE_URL = 'http://localhost:8080/geospatial/processing';
+const VEGETATION_API_BASE_URL = '/api/v1/vegetation-indices';
+const PROCESSING_API_BASE_URL = '/geospatial/processing';
 
 export interface AnalysisResult {
     id?: string; // Added optional id field
@@ -45,24 +44,11 @@ interface CalculateEviParams extends CalculateNdviParams {
 
 const handleApiError = (error: any, operation: string): never => {
     console.error(`Error during ${operation}:`, error);
-    if (axios.isAxiosError(error)) {
-        if (error.response) {
-            console.error('Error response data:', error.response.data);
-            console.error('Error response status:', error.response.status);
-            console.error('Error response headers:', error.response.headers);
-            const message = error.response.data?.message || error.response.statusText || 'Server error';
-            throw new Error(`Failed to ${operation}: ${message} (Status: ${error.response.status})`);
-        }
-    }
-    throw new Error(`Failed to ${operation}: ${error.message || 'Unknown error'}`);
+    const message = error.message || 'Unknown error';
+    throw new Error(`Failed to ${operation}: ${message}`);
 };
 
 const calculateNDVI = async (params: CalculateNdviParams): Promise<AnalysisResult> => {
-    const token = authService.getToken();
-    if (!token) {
-        throw new Error('No authentication token found');
-    }
-
     const formData = new FormData();
     
     const metadata = {
@@ -73,32 +59,25 @@ const calculateNDVI = async (params: CalculateNdviParams): Promise<AnalysisResul
     formData.append('file', params.file, params.filename);
 
     try {
-        const response = await axios.post<ApiResponse<AnalysisResult>>(
+        const response = await httpClient.post<ApiResponse<AnalysisResult>>(
             `${VEGETATION_API_BASE_URL}/ndvi`,
             formData,
             {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                }
+                requiresAuth: true
             }
         );
 
-        if (response.data.status !== 'SUCCESS' || !response.data.data) {
-            throw new Error(response.data.message || 'Failed to calculate NDVI');
+        if (response.status !== 'SUCCESS' || !response.data) {
+            throw new Error(response.message || 'Failed to calculate NDVI');
         }
 
-        return response.data.data;
+        return response.data;
     } catch (error) {
         return handleApiError(error, 'calculate NDVI');
     }
 };
 
 const calculateEVI = async (params: CalculateEviParams): Promise<AnalysisResult> => {
-    const token = authService.getToken();
-    if (!token) {
-        throw new Error('No authentication token found');
-    }
-
     const formData = new FormData();
     
     const metadata = {
@@ -110,40 +89,35 @@ const calculateEVI = async (params: CalculateEviParams): Promise<AnalysisResult>
     formData.append('file', params.file, params.filename);
 
     try {
-        const response = await axios.post<ApiResponse<AnalysisResult>>(
+        const response = await httpClient.post<ApiResponse<AnalysisResult>>(
             `${VEGETATION_API_BASE_URL}/evi`,
             formData,
             {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                }
+                requiresAuth: true
             }
         );
 
-        if (response.data.status !== 'SUCCESS' || !response.data.data) {
-            throw new Error(response.data.message || 'Failed to calculate EVI');
+        if (response.status !== 'SUCCESS' || !response.data) {
+            throw new Error(response.message || 'Failed to calculate EVI');
         }
 
-        return response.data.data;
+        return response.data;
     } catch (error) {
         return handleApiError(error, 'calculate EVI');
     }
 };
 
 const getAnalysisResults = async (projectId: string): Promise<AnalysisResult[]> => {
-    const token = authService.getToken();
-    if (!token) {
-        throw new Error('No authentication token found');
-    }
-
     try {
-        const response = await axios.get(`${PROCESSING_API_BASE_URL}/project/${projectId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
+        const response = await httpClient.get<any>(
+            `${PROCESSING_API_BASE_URL}/project/${projectId}`,
+            {
+                requiresAuth: true
             }
-        });
-        // Check if the actual results array is nested within response.data.data
-        const backendResponseData = response.data; // The object { timestamp, status, message, data }
+        );
+        
+        // Check if the actual results array is nested within response.data
+        const backendResponseData = response; // The object { timestamp, status, message, data }
         const backendResultsArray = backendResponseData?.data; // Access the nested 'data' array
 
         // Ensure backendResultsArray is actually an array before mapping
@@ -179,9 +153,9 @@ const getAnalysisResults = async (projectId: string): Promise<AnalysisResult[]> 
         });
 
         return mappedResults;
-    } catch (error) {
+    } catch (error: any) {
         // Check specifically for 404
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
+        if (error.message?.includes('404')) {
             console.warn(`No analysis results found for project ${projectId} (404). Returning empty array.`);
             return []; // Return empty array for 404
         }
@@ -191,32 +165,20 @@ const getAnalysisResults = async (projectId: string): Promise<AnalysisResult[]> 
 };
 
 const getLatestAnalysisResult = async (projectId: string, imageId: string): Promise<AnalysisResult> => {
-    const token = authService.getToken();
-    if (!token) {
-        throw new Error('No authentication token found');
-    }
-
     try {
-        const response = await axios.get(
+        const response = await httpClient.get<AnalysisResult>(
             `${PROCESSING_API_BASE_URL}/latest/${projectId}/${imageId}`,
             {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                requiresAuth: true
             }
         );
-        return response.data;
+        return response;
     } catch (error) {
         return handleApiError(error, 'fetch latest analysis result');
     }
 };
 
 const saveAnalysisResult = async (projectId: string, result: AnalysisResult): Promise<void> => {
-    const token = authService.getToken();
-    if (!token) {
-        throw new Error('No authentication token found');
-    }
-
     try {
         const formData = new FormData();
         
@@ -243,11 +205,8 @@ const saveAnalysisResult = async (projectId: string, result: AnalysisResult): Pr
         const imageBlob = await fetch(`data:image/png;base64,${imageData}`).then(r => r.blob());
         formData.append('file', imageBlob, 'result.tif');
 
-        await axios.post(`${PROCESSING_API_BASE_URL}/save`, formData, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'multipart/form-data'
-            }
+        await httpClient.post(`${PROCESSING_API_BASE_URL}/save`, formData, {
+            requiresAuth: true
         });
     } catch (error) {
         throw handleApiError(error, 'save analysis result');
@@ -272,52 +231,37 @@ export interface UpdateAnalysisData {
 
 
 const deleteAnalysisResult = async (imageId: string, resultId: string): Promise<ApiResponse<null>> => {
-    const token = authService.getToken();
-    if (!token) {
-        throw new Error('No authentication token found');
-    }
-
     try {
-        const response = await axios.delete<ApiResponse<null>>(
+        const response = await httpClient.delete<ApiResponse<null>>(
             `${PROCESSING_API_BASE_URL}/image/${imageId}/${resultId}`,
             {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                requiresAuth: true
             }
         );
-        if (response.data.status !== 'SUCCESS') {
-            throw new Error(response.data.message || 'Failed to delete analysis result');
+        if (response.status !== 'SUCCESS') {
+            throw new Error(response.message || 'Failed to delete analysis result');
         }
-        return response.data; // Return the full API response
+        return response; // Return the full API response
     } catch (error) {
         return handleApiError(error, 'delete analysis result');
     }
 };
 
 const updateAnalysisResult = async (resultId: string, updateData: UpdateAnalysisData): Promise<ApiResponse<AnalysisResult>> => {
-    const token = authService.getToken();
-    if (!token) {
-        throw new Error('No authentication token found');
-    }
-
     try {
-        const response = await axios.put<ApiResponse<AnalysisResult>>(
+        const response = await httpClient.put<ApiResponse<AnalysisResult>>(
             `${PROCESSING_API_BASE_URL}/${resultId}`,
             updateData,
             {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                requiresAuth: true
             }
         );
-        if (response.data.status !== 'SUCCESS' || !response.data.data) {
-            throw new Error(response.data.message || 'Failed to update analysis result');
+        if (response.status !== 'SUCCESS' || !response.data) {
+            throw new Error(response.message || 'Failed to update analysis result');
         }
         // Map the updated result back to AnalysisResult if necessary, or assume backend returns compatible structure
         // For now, assume the returned data structure matches AnalysisResult or is close enough
-        return response.data; // Return the full API response
+        return response; // Return the full API response
     } catch (error) {
         return handleApiError(error, 'update analysis result');
     }
@@ -335,28 +279,24 @@ export const analysisService = {
 
     // Function to get the result image file as a blob
     async getAnalysisResultFile(resultId: string): Promise<Blob> {
-        const token = authService.getToken();
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
         if (!resultId) {
             throw new Error('Result ID is required to fetch the file');
         }
 
         try {
-            // Use axios directly for blob response
-            const response = await axios.get(
+            // Use httpClient with blob response type
+            const response = await httpClient.get(
                  `${PROCESSING_API_BASE_URL}/${resultId}/file`,
                  {
-                     headers: { 'Authorization': `Bearer ${token}` },
-                     responseType: 'blob', // Important: expect a blob response
+                     requiresAuth: true,
+                     responseType: 'blob' // Important: expect a blob response
                  }
             );
             // Check if the response is actually a blob
-            if (!(response.data instanceof Blob)) {
+            if (!(response instanceof Blob)) {
                 throw new Error('Received unexpected data format instead of a file blob.');
             }
-            return response.data;
+            return response;
         } catch (error) {
             // Use handleApiError, but it might need adjustment if error response for blob is different
             return handleApiError(error, `fetch analysis result file for ID ${resultId}`);

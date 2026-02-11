@@ -6,7 +6,6 @@ import {
     GeeParams, // Import GeeParams
     FetchGeeImageServiceParams // Import service params type
 } from '@/services/gee.service';
-import { authService } from '@/services/auth.service';
 
 // Define the hook's return type
 interface UseGeeImageReturn {
@@ -43,15 +42,9 @@ export function useGeeImage(projectId: string | undefined | null): UseGeeImageRe
         console.log('Fetching GEE image with params:', paramsToFetch);
 
         try {
-            const token = authService.getToken();
-            if (!token) {
-                throw new Error("Authentication token not found.");
-            }
-
             // Prepare params for the service call
             const serviceCallParams: FetchGeeImageServiceParams = {
                 params: paramsToFetch,
-                token: token,
             };
 
             // Call service with the full parameter object
