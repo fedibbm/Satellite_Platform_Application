@@ -1,0 +1,143 @@
+### Workflow API Testing
+
+@baseUrl = http://localhost:8080/api/workflows
+
+### 1. Get all node types
+GET {{baseUrl}}/nodes/types
+
+### 2. Create a new workflow
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "NDVI Analysis Workflow",
+  "description": "Automated NDVI calculation workflow for Landsat data",
+  "projectId": "project-123",
+  "tags": ["ndvi", "landsat", "analysis"],
+  "nodes": [
+    {
+      "id": "node-1",
+      "type": "trigger",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "Manual Trigger",
+        "description": "Start workflow manually",
+        "config": {
+          "triggerType": "manual"
+        }
+      }
+    },
+    {
+      "id": "node-2",
+      "type": "data-input",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "label": "Fetch Landsat Data",
+        "description": "Get Landsat images from GEE",
+        "config": {
+          "sourceType": "gee",
+          "collection_id": "LANDSAT/LC08/C02/T1_L2",
+          "start_date": "2024-01-01",
+          "end_date": "2024-12-31"
+        }
+      }
+    },
+    {
+      "id": "node-3",
+      "type": "processing",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "label": "Calculate NDVI",
+        "description": "Process NDVI calculation",
+        "config": {
+          "processingType": "ndvi",
+          "parameters": {
+            "scale": 30
+          }
+        }
+      }
+    },
+    {
+      "id": "node-4",
+      "type": "output",
+      "position": { "x": 700, "y": 100 },
+      "data": {
+        "label": "Save Results",
+        "description": "Save NDVI results to storage",
+        "config": {
+          "outputType": "storage",
+          "destination": "/results/ndvi/"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "source": "node-1",
+      "target": "node-2"
+    },
+    {
+      "id": "edge-2",
+      "source": "node-2",
+      "target": "node-3"
+    },
+    {
+      "id": "edge-3",
+      "source": "node-3",
+      "target": "node-4"
+    }
+  ],
+  "isTemplate": false
+}
+
+### 3. Get all workflows
+GET {{baseUrl}}
+
+### 4. Get workflow by ID (replace with actual ID)
+@workflowId = 
+GET {{baseUrl}}/{{workflowId}}
+
+### 5. Get workflows by project
+GET {{baseUrl}}/project/project-123
+
+### 6. Get workflow templates
+GET {{baseUrl}}/templates
+
+### 7. Update workflow
+PUT {{baseUrl}}/{{workflowId}}
+Content-Type: application/json
+
+{
+  "name": "Updated NDVI Workflow",
+  "description": "Updated description",
+  "status": "ACTIVE",
+  "changelog": "Added new processing node"
+}
+
+### 8. Execute workflow
+POST {{baseUrl}}/{{workflowId}}/execute
+Content-Type: application/json
+
+{
+  "parameters": {
+    "region": "test-region",
+    "userId": "user-123"
+  }
+}
+
+### 9. Get workflow executions
+GET {{baseUrl}}/{{workflowId}}/executions
+
+### 10. Get all executions
+GET {{baseUrl}}/executions
+
+### 11. Get execution by ID
+@executionId = 
+GET {{baseUrl}}/executions/{{executionId}}
+
+### 12. Cancel execution
+POST {{baseUrl}}/executions/{{executionId}}/cancel
+
+### 13. Delete workflow
+DELETE {{baseUrl}}/{{workflowId}}

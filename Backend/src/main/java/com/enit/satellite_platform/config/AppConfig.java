@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @EnableCaching
@@ -31,5 +32,16 @@ public class AppConfig {
         executor.setThreadNamePrefix("AsyncTask-");
         executor.initialize();
         return executor;
+    }
+    
+    /**
+     * Provides a RestTemplate bean for making HTTP requests to external services
+     * (GEE service, image processing service, etc.)
+     *
+     * @return The RestTemplate instance.
+     */
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }
