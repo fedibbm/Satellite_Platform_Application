@@ -32,7 +32,7 @@ public class WorkflowDefinitionService {
         workflow.setCreatedAt(LocalDateTime.now());
         workflow.setUpdatedAt(LocalDateTime.now());
         workflow.setTags(request.getTags());
-        workflow.setIsTemplate(request.isTemplate());
+        workflow.setTemplate(request.isTemplate());
         
         // Create initial version
         WorkflowVersion version = new WorkflowVersion();

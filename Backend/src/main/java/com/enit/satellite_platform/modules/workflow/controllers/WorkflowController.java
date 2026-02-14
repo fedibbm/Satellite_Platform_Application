@@ -2,6 +2,7 @@ package com.enit.satellite_platform.modules.workflow.controllers;
 
 import com.enit.satellite_platform.modules.workflow.dto.*;
 import com.enit.satellite_platform.modules.workflow.entities.WorkflowExecution;
+import com.enit.satellite_platform.modules.workflow.entities.WorkflowExecutionStatus;
 import com.enit.satellite_platform.modules.workflow.services.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -116,7 +117,8 @@ public class WorkflowController {
     
     @PostMapping("/executions/{executionId}/cancel")
     public ResponseEntity<WorkflowExecution> cancelExecution(@PathVariable String executionId) {
-        WorkflowExecution execution = workflowExecutionService.updateExecutionStatus(executionId, "cancelled");
+        WorkflowExecution execution = workflowExecutionService.updateExecutionStatus(
+                executionId, WorkflowExecutionStatus.CANCELLED.getValue());
         return ResponseEntity.ok(execution);
     }
     
