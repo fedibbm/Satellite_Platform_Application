@@ -1,6 +1,7 @@
 package com.enit.satellite_platform.modules.workflow.services;
 
 import com.enit.satellite_platform.modules.workflow.entities.WorkflowExecution;
+import com.enit.satellite_platform.modules.workflow.entities.WorkflowExecutionStatus;
 import com.enit.satellite_platform.modules.workflow.entities.WorkflowLog;
 import com.enit.satellite_platform.modules.workflow.repositories.WorkflowExecutionRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +47,9 @@ public class WorkflowExecutionService {
         WorkflowExecution execution = getExecutionById(executionId);
         execution.setStatus(status);
         
-        if ("completed".equals(status) || "failed".equals(status) || "cancelled".equals(status)) {
+        if (WorkflowExecutionStatus.COMPLETED.getValue().equals(status) || 
+            WorkflowExecutionStatus.FAILED.getValue().equals(status) || 
+            WorkflowExecutionStatus.CANCELLED.getValue().equals(status)) {
             execution.setCompletedAt(LocalDateTime.now());
         }
         

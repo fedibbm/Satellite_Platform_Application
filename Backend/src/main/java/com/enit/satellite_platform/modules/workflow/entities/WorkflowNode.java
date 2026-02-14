@@ -11,7 +11,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class WorkflowNode {
     private String id;
-    private String type; // trigger, data-input, processing, decision, output
+    private WorkflowNodeType type;
     private Position position;
     private NodeData data;
     

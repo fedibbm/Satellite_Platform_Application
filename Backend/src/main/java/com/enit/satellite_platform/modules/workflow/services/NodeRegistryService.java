@@ -1,5 +1,6 @@
 package com.enit.satellite_platform.modules.workflow.services;
 
+import com.enit.satellite_platform.modules.workflow.entities.WorkflowNodeType;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -10,12 +11,12 @@ public class NodeRegistryService {
     private final Map<String, NodeMetadata> nodeRegistry = new HashMap<>();
     
     public NodeRegistryService() {
-        // Register built-in node types
-        registerNodeType("trigger", createTriggerMetadata());
-        registerNodeType("data-input", createDataInputMetadata());
-        registerNodeType("processing", createProcessingMetadata());
-        registerNodeType("decision", createDecisionMetadata());
-        registerNodeType("output", createOutputMetadata());
+        // Register built-in node types using enum
+        registerNodeType(WorkflowNodeType.TRIGGER.getValue(), createTriggerMetadata());
+        registerNodeType(WorkflowNodeType.DATA_INPUT.getValue(), createDataInputMetadata());
+        registerNodeType(WorkflowNodeType.PROCESSING.getValue(), createProcessingMetadata());
+        registerNodeType(WorkflowNodeType.DECISION.getValue(), createDecisionMetadata());
+        registerNodeType(WorkflowNodeType.OUTPUT.getValue(), createOutputMetadata());
     }
     
     public void registerNodeType(String type, NodeMetadata metadata) {
