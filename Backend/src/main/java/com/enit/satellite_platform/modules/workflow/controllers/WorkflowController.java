@@ -3,6 +3,7 @@ package com.enit.satellite_platform.modules.workflow.controllers;
 import com.enit.satellite_platform.modules.workflow.dto.*;
 import com.enit.satellite_platform.modules.workflow.services.ConductorRegistrationService;
 import com.enit.satellite_platform.modules.workflow.services.WorkflowDefinitionService;
+import com.enit.satellite_platform.modules.workflow.services.WorkflowExecutionService;
 import com.netflix.conductor.common.metadata.workflow.WorkflowDef;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ public class WorkflowController {
     
     private final WorkflowDefinitionService workflowDefinitionService;
     private final ConductorRegistrationService conductorRegistrationService;
+    private final WorkflowExecutionService workflowExecutionService;
     
     /**
      * Create a new workflow
@@ -161,9 +163,119 @@ public class WorkflowController {
     }
     
     /**
+     * Execute/start a workflow
+     */
+    @PostMapping("/{id}/execute")
+    public ResponseEntity<Map<String, Object>> executeWorkflow(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, Object> input) {
+        WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
+        
+        String conductorWorkflowName = workflow.getProjectId() + "_" + 
+                workflow.getName().toLowerCase().replaceAll("\\s+", "_").replaceAll("[^a-z0-9_]", "");
+        
+        // Default input if not provided
+        if (input == null) {
+            input = new HashMap<>();
+        }
+        
+        String workflowId = workflowExecutionService.startWorkflow(conductorWorkflowName, 1, input);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("workflowId", workflowId);
+        response.put("conductorWorkflowName", conductorWorkflowName);
+        response.put("status", "started");
+        response.put("message", "Workflow execution started successfully");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Get workflow execution status
+     */
+    @GetMapping("/execution/{workflowId}/status")
+    public ResponseEntity<Map<String, Object>> getExecutionStatus(@PathVariable String workflowId) {
+        Map<String, Object> status = workflowExecutionService.getWorkflowStatus(workflowId);
+        return ResponseEntity.ok(status);
+    }
+    
+    /**
+     * Get workflow execution details with tasks
+     */
+    @GetMapping("/execution/{workflowId}/details")
+    public ResponseEntity<Map<String, Object>> getExecutionDetails(@PathVariable String workflowId) {
+        Map<String, Object> details = workflowExecutionService.getWorkflowDetails(workflowId);
+        return ResponseEntity.ok(details);
+    }
+    
+    /**
+     * Terminate a workflow execution
+     */
+    @PostMapping("/execution/{workflowId}/terminate")
+    public ResponseEntity<Map<String, String>> terminateExecution(
+            @PathVariable String workflowId,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : "Terminated by user";
+        workflowExecutionService.terminateWorkflow(workflowId, reason);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("workflowId", workflowId);
+        response.put("status", "terminated");
+        response.put("message", "Workflow terminated successfully");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Pause a workflow execution
+     */
+    @PostMapping("/execution/{workflowId}/pause")
+    public ResponseEntity<Map<String, String>> pauseExecution(@PathVariable String workflowId) {
+        workflowExecutionService.pauseWorkflow(workflowId);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("workflowId", workflowId);
+        response.put("status", "paused");
+        response.put("message", "Workflow paused successfully");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Resume a paused workflow execution
+     */
+    @PostMapping("/execution/{workflowId}/resume")
+    public ResponseEntity<Map<String, String>> resumeExecution(@PathVariable String workflowId) {
+        workflowExecutionService.resumeWorkflow(workflowId);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("workflowId", workflowId);
+        response.put("status", "resumed");
+        response.put("message", "Workflow resumed successfully");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Restart a workflow execution
+     */
+    @PostMapping("/execution/{workflowId}/restart")
+    public ResponseEntity<Map<String, String>> restartExecution(@PathVariable String workflowId) {
+        workflowExecutionService.restartWorkflow(workflowId);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("workflowId", workflowId);
+        response.put("status", "restarted");
+        response.put("message", "Workflow restarted successfully");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
      * Extract user ID from authentication
      */
     private String getUserId(Authentication authentication) {
         return authentication != null ? authentication.getName() : "system";
     }
+
 }

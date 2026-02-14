@@ -1,0 +1,106 @@
+### ============================================
+### Phase 4: Task Workers & Workflow Execution
+### ============================================
+
+### Variables
+@baseUrl = http://localhost:9090
+@token = eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sImVtYWlsIjoidGhlbWF0aWNpYW5AZXhhbXBsZS5jb20iLCJuYW1lIjoidGhlbWF0aWNpYW4xIiwic3ViIjoidGhlbWF0aWNpYW5AZXhhbXBsZS5jb20iLCJpYXQiOjE3NzExMTAzMzUsImV4cCI6MTc3MTE5NjczNX0.W-bg4Z6v5m3dUsdL26DGw6Mq22YQOge46OAorBiwYynXa2uipLUuA1upTQ5CkwkXx6ckwgUWPORvNPWX_kveeg
+@workflowId = 6990fc3d076cc8181df8b96c
+@executionId = 
+
+### ============================================
+### 1. Execute Workflow (Start Execution)
+### ============================================
+POST {{baseUrl}}/api/workflows/{{workflowId}}/execute
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "imageId": "LANDSAT/LC08/C01/T1_TOA/LC08_123045_20170101",
+  "userId": "thematician@example.com",
+  "projectId": "project123",
+  "startDate": "2023-01-01",
+  "endDate": "2023-12-31",
+  "region": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-122.5, 37.5],
+      [-122.5, 38.5],
+      [-121.5, 38.5],
+      [-121.5, 37.5],
+      [-122.5, 37.5]
+    ]]
+  }
+}
+
+### ============================================
+### 2. Get Workflow Execution Status
+### ============================================
+GET {{baseUrl}}/api/workflows/execution/{{executionId}}/status
+Authorization: Bearer {{token}}
+
+### ============================================
+### 3. Get Workflow Execution Details (with tasks)
+### ============================================
+GET {{baseUrl}}/api/workflows/execution/{{executionId}}/details
+Authorization: Bearer {{token}}
+
+### ============================================
+### 4. Pause Workflow Execution
+### ============================================
+POST {{baseUrl}}/api/workflows/execution/{{executionId}}/pause
+Authorization: Bearer {{token}}
+
+### ============================================
+### 5. Resume Workflow Execution
+### ============================================
+POST {{baseUrl}}/api/workflows/execution/{{executionId}}/resume
+Authorization: Bearer {{token}}
+
+### ============================================
+### 6. Terminate Workflow Execution
+### ============================================
+POST {{baseUrl}}/api/workflows/execution/{{executionId}}/terminate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reason": "Testing termination"
+}
+
+### ============================================
+### 7. Restart Workflow Execution
+### ============================================
+POST {{baseUrl}}/api/workflows/execution/{{executionId}}/restart
+Authorization: Bearer {{token}}
+
+### ============================================
+### Direct Conductor API Calls (for debugging)
+### ============================================
+
+### 8. Get Conductor workflow executions
+GET http://localhost:8080/api/workflow/search?query=workflowType:project123_updated_workflow_name
+
+### 9. Get specific execution from Conductor
+GET http://localhost:8080/api/workflow/{{executionId}}?includeTasks=true
+
+### 10. Get task definitions from Conductor
+GET http://localhost:8080/api/metadata/taskdefs
+
+### ============================================
+### Test Individual Workers (via simple workflow)
+### ============================================
+
+### 11. Test TriggerWorker only
+POST {{baseUrl}}/api/workflows/{{workflowId}}/execute
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "workflowId": "test-workflow",
+  "userId": "test-user",
+  "projectId": "test-project"
+}
+
+### 12. Check Worker Registration
+GET {{baseUrl}}/api/conductor/health

@@ -70,4 +70,17 @@ public class ConductorClientConfig {
         log.info("Creating MetadataClient from OrkesClients");
         return clients.getMetadataClient();
     }
+
+    /**
+     * Netflix Conductor TaskClient for worker polling
+     * Used by TaskRunnerConfigurer to poll for tasks
+     */
+    @Bean
+    public com.netflix.conductor.client.http.TaskClient conductorTaskClient() {
+        log.info("Creating Netflix Conductor TaskClient for workers");
+        com.netflix.conductor.client.http.TaskClient taskClient = 
+            new com.netflix.conductor.client.http.TaskClient();
+        taskClient.setRootURI(conductorServerUrl);
+        return taskClient;
+    }
 }
