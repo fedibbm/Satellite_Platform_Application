@@ -1,9 +1,9 @@
 ### Check Conductor server connectivity
-GET http://localhost:8080/api/conductor/health
+GET http://localhost:9090/api/conductor/health
 Content-Type: application/json
 
 ###
 
 ### Get Conductor server info
-GET http://localhost:8080/api/conductor/info
+GET http://localhost:9090/api/conductor/info
 Content-Type: application/json
