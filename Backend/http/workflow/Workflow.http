@@ -128,3 +128,15 @@ Authorization: Bearer {{token}}
 ### Delete workflow (replace WORKFLOW_ID)
 DELETE {{baseUrl}}/workflows/{{workflowId}}
 Authorization: Bearer {{token}}
+
+###
+
+### Step 3: Register workflow with Conductor
+POST {{baseUrl}}/workflows/{{workflowId}}/register
+Authorization: Bearer {{token}}
+
+###
+
+### Step 4: Get Conductor workflow definition
+GET {{baseUrl}}/workflows/{{workflowId}}/conductor-def
+Authorization: Bearer {{token}}

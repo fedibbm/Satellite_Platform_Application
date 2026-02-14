@@ -1,14 +1,18 @@
 package com.enit.satellite_platform.modules.workflow.controllers;
 
 import com.enit.satellite_platform.modules.workflow.dto.*;
+import com.enit.satellite_platform.modules.workflow.services.ConductorRegistrationService;
 import com.enit.satellite_platform.modules.workflow.services.WorkflowDefinitionService;
+import com.netflix.conductor.common.metadata.workflow.WorkflowDef;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST Controller for Workflow Definition management
@@ -20,6 +24,7 @@ import java.util.List;
 public class WorkflowController {
     
     private final WorkflowDefinitionService workflowDefinitionService;
+    private final ConductorRegistrationService conductorRegistrationService;
     
     /**
      * Create a new workflow
@@ -96,6 +101,63 @@ public class WorkflowController {
     public ResponseEntity<WorkflowResponse> publishWorkflow(@PathVariable String id) {
         WorkflowResponse workflow = workflowDefinitionService.publishWorkflow(id);
         return ResponseEntity.ok(workflow);
+    }
+    
+    /**
+     * Register workflow with Conductor
+     */
+    @PostMapping("/{id}/register")
+    public ResponseEntity<Map<String, String>> registerWorkflowWithConductor(@PathVariable String id) {
+        WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
+        
+        // Convert response back to entity for registration (simple mapping)
+        com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition workflowEntity = 
+                new com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition();
+        workflowEntity.setId(workflow.getId());
+        workflowEntity.setName(workflow.getName());
+        workflowEntity.setDescription(workflow.getDescription());
+        workflowEntity.setProjectId(workflow.getProjectId());
+        workflowEntity.setVersion(workflow.getVersion());
+        workflowEntity.setStatus(workflow.getStatus());
+        workflowEntity.setCreatedBy(workflow.getCreatedBy());
+        workflowEntity.setCreatedAt(workflow.getCreatedAt());
+        workflowEntity.setUpdatedAt(workflow.getUpdatedAt());
+        workflowEntity.setNodes(workflow.getNodes());
+        workflowEntity.setEdges(workflow.getEdges());
+        
+        com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata metadata = 
+                new com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata();
+        metadata.setTimeoutSeconds(workflow.getTimeoutSeconds());
+        metadata.setTags(workflow.getTags());
+        workflowEntity.setMetadata(metadata);
+        
+        conductorRegistrationService.registerWorkflow(workflowEntity);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Workflow registered successfully with Conductor");
+        response.put("workflowId", id);
+        response.put("status", "registered");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Get Conductor workflow definition
+     */
+    @GetMapping("/{id}/conductor-def")
+    public ResponseEntity<WorkflowDef> getConductorWorkflowDef(@PathVariable String id) {
+        WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
+        
+        String conductorWorkflowName = workflow.getProjectId() + "_" + 
+                workflow.getName().toLowerCase().replaceAll("\\s+", "_").replaceAll("[^a-z0-9_]", "");
+        
+        WorkflowDef conductorDef = conductorRegistrationService.getWorkflowDef(conductorWorkflowName, null);
+        
+        if (conductorDef == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        return ResponseEntity.ok(conductorDef);
     }
     
     /**
