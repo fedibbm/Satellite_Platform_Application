@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { authService } from './auth.service';
 
-const VEGETATION_API_BASE_URL = 'http://localhost:8080/api/v1/vegetation-indices';
-const PROCESSING_API_BASE_URL = 'http://localhost:8080/geospatial/processing';
+const VEGETATION_API_BASE_URL = 'http://localhost:9090/api/v1/vegetation-indices';
+const PROCESSING_API_BASE_URL = 'http://localhost:9090/geospatial/processing';
 
 export interface AnalysisResult {
     id?: string; // Added optional id field

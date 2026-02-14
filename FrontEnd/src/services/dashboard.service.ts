@@ -47,7 +47,7 @@ export interface DashboardData extends DashboardStats {
 }
 
 class DashboardService {
-    private readonly baseUrl = 'http://localhost:8080/api/dashboard';
+    private readonly baseUrl = 'http://localhost:9090/api/dashboard';
 
     private formatBytes(bytes: number): string {
         if (bytes === 0) return '0 B';

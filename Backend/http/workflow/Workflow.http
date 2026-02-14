@@ -1,143 +1,130 @@
-### Workflow API Testing
+@baseUrl = http://localhost:9090/api
+@token = 
 
-@baseUrl = http://localhost:8080/api/workflows
-
-### 1. Get all node types
-GET {{baseUrl}}/nodes/types
-
-### 2. Create a new workflow
-POST {{baseUrl}}
+### Step 1: Sign in to get token
+# @name signin
+POST {{baseUrl}}/auth/signin
 Content-Type: application/json
 
 {
-  "name": "NDVI Analysis Workflow",
-  "description": "Automated NDVI calculation workflow for Landsat data",
-  "projectId": "project-123",
-  "tags": ["ndvi", "landsat", "analysis"],
+  "username": "hyperar69@gmail.com",
+  "password": "1234"
+}
+
+> {%
+    client.global.set("token", response.body.accessToken);
+%}
+
+###
+
+### Step 2: Create a new workflow
+POST {{baseUrl}}/workflows
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Sample Image Processing Workflow",
+  "description": "A workflow for processing satellite images",
+  "projectId": "project123",
+  "timeoutSeconds": 3600,
+  "tags": ["image-processing", "satellite"],
   "nodes": [
     {
-      "id": "node-1",
-      "type": "trigger",
-      "position": { "x": 100, "y": 100 },
-      "data": {
-        "label": "Manual Trigger",
-        "description": "Start workflow manually",
-        "config": {
-          "triggerType": "manual"
-        }
+      "id": "node1",
+      "type": "TRIGGER",
+      "name": "Start",
+      "description": "Workflow trigger",
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "taskReferenceName": "trigger_start",
+      "configuration": {
+        "taskType": "SIMPLE",
+        "taskName": "workflow_trigger"
       }
     },
     {
-      "id": "node-2",
-      "type": "data-input",
-      "position": { "x": 300, "y": 100 },
-      "data": {
-        "label": "Fetch Landsat Data",
-        "description": "Get Landsat images from GEE",
-        "config": {
-          "sourceType": "gee",
-          "collection_id": "LANDSAT/LC08/C02/T1_L2",
-          "start_date": "2024-01-01",
-          "end_date": "2024-12-31"
+      "id": "node2",
+      "type": "TASK",
+      "name": "Load Image",
+      "description": "Load satellite image from storage",
+      "position": {
+        "x": 300,
+        "y": 100
+      },
+      "taskReferenceName": "load_image_task",
+      "configuration": {
+        "taskType": "SIMPLE",
+        "taskName": "load_image",
+        "timeoutSeconds": 300,
+        "retryConfig": {
+          "retryCount": 3,
+          "retryDelaySeconds": 10,
+          "retryLogic": "FIXED"
         }
-      }
-    },
-    {
-      "id": "node-3",
-      "type": "processing",
-      "position": { "x": 500, "y": 100 },
-      "data": {
-        "label": "Calculate NDVI",
-        "description": "Process NDVI calculation",
-        "config": {
-          "processingType": "ndvi",
-          "parameters": {
-            "scale": 30
-          }
-        }
-      }
-    },
-    {
-      "id": "node-4",
-      "type": "output",
-      "position": { "x": 700, "y": 100 },
-      "data": {
-        "label": "Save Results",
-        "description": "Save NDVI results to storage",
-        "config": {
-          "outputType": "storage",
-          "destination": "/results/ndvi/"
-        }
+      },
+      "inputParameters": {
+        "imageId": "${workflow.input.imageId}"
       }
     }
   ],
   "edges": [
     {
-      "id": "edge-1",
-      "source": "node-1",
-      "target": "node-2"
-    },
-    {
-      "id": "edge-2",
-      "source": "node-2",
-      "target": "node-3"
-    },
-    {
-      "id": "edge-3",
-      "source": "node-3",
-      "target": "node-4"
+      "id": "edge1",
+      "sourceNodeId": "node1",
+      "targetNodeId": "node2",
+      "label": "next"
     }
-  ],
-  "isTemplate": false
+  ]
 }
 
-### 3. Get all workflows
-GET {{baseUrl}}
+###
 
-### 4. Get workflow by ID (replace with actual ID)
-@workflowId = 
-GET {{baseUrl}}/{{workflowId}}
+### Get all workflows
+GET {{baseUrl}}/workflows
+Authorization: Bearer {{token}}
 
-### 5. Get workflows by project
-GET {{baseUrl}}/project/project-123
+###
 
-### 6. Get workflow templates
-GET {{baseUrl}}/templates
+### Get workflow by ID (replace WORKFLOW_ID with actual ID from create response)
+@workflowId = WORKFLOW_ID_HERE
+GET {{baseUrl}}/workflows/{{workflowId}}
+Authorization: Bearer {{token}}
 
-### 7. Update workflow
-PUT {{baseUrl}}/{{workflowId}}
+###
+
+### Get workflows by project
+GET {{baseUrl}}/workflows/project/project123
+Authorization: Bearer {{token}}
+
+###
+
+### Get workflows by status
+GET {{baseUrl}}/workflows/status/DRAFT
+Authorization: Bearer {{token}}
+
+###
+
+### Update workflow (replace WORKFLOW_ID)
+PUT {{baseUrl}}/workflows/{{workflowId}}
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
-  "name": "Updated NDVI Workflow",
+  "name": "Updated Workflow Name",
   "description": "Updated description",
-  "status": "ACTIVE",
-  "changelog": "Added new processing node"
+  "status": "DRAFT"
 }
 
-### 8. Execute workflow
-POST {{baseUrl}}/{{workflowId}}/execute
-Content-Type: application/json
+###
 
-{
-  "parameters": {
-    "region": "test-region",
-    "userId": "user-123"
-  }
-}
+### Publish workflow (replace WORKFLOW_ID)
+POST {{baseUrl}}/workflows/{{workflowId}}/publish
+Authorization: Bearer {{token}}
 
-### 9. Get workflow executions
-GET {{baseUrl}}/{{workflowId}}/executions
+###
 
-### 10. Get all executions
-GET {{baseUrl}}/executions
-
-### 11. Get execution by ID
-@executionId = 
-GET {{baseUrl}}/executions/{{executionId}}
-
-### 12. Cancel execution
-POST {{baseUrl}}/executions/{{executionId}}/cancel
-
-### 13. Delete workflow
-DELETE {{baseUrl}}/{{workflowId}}
+### Delete workflow (replace WORKFLOW_ID)
+DELETE {{baseUrl}}/workflows/{{workflowId}}
+Authorization: Bearer {{token}}

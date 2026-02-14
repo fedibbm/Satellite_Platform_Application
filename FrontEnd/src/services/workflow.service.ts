@@ -1,6 +1,6 @@
 import { Workflow, WorkflowExecution, CreateWorkflowData, UpdateWorkflowData } from '@/types/workflow';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9090';
 const WORKFLOW_API = `${API_BASE_URL}/api/workflows`;
 
 // Helper function to get auth token
