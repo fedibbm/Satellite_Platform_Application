@@ -1,0 +1,241 @@
+### Create Scheduled Trigger (Daily at Midnight)
+POST http://localhost:8080/api/workflow/triggers
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "workflowDefinitionId": "{{workflowId}}",
+  "projectId": "{{projectId}}",
+  "name": "Daily NDVI Processing",
+  "description": "Process satellite imagery daily at midnight UTC",
+  "type": "SCHEDULED",
+  "config": {
+    "cronExpression": "0 0 0 * * *",
+    "timezone": "UTC",
+    "maxExecutions": 365
+  },
+  "defaultInputs": {
+    "imageType": "SENTINEL2",
+    "resolution": "10m",
+    "processingType": "NDVI"
+  }
+}
+
+### Create Scheduled Trigger (Every Hour)
+POST http://localhost:8080/api/workflow/triggers
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "workflowDefinitionId": "{{workflowId}}",
+  "projectId": "{{projectId}}",
+  "name": "Hourly Image Check",
+  "description": "Check for new images every hour",
+  "type": "SCHEDULED",
+  "config": {
+    "cronExpression": "0 0 * * * *",
+    "timezone": "America/New_York",
+    "startDate": "2026-02-15T00:00:00",
+    "endDate": "2026-12-31T23:59:59"
+  },
+  "defaultInputs": {
+    "checkType": "NEW_IMAGES"
+  }
+}
+
+### Create Scheduled Trigger (Every 15 Minutes)
+POST http://localhost:8080/api/workflow/triggers
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "workflowDefinitionId": "{{workflowId}}",
+  "projectId": "{{projectId}}",
+  "name": "Frequent Processing",
+  "description": "Process data every 15 minutes",
+  "type": "SCHEDULED",
+  "config": {
+    "cronExpression": "0 */15 * * * *",
+    "timezone": "UTC",
+    "maxExecutions": 100
+  }
+}
+
+### Create Scheduled Trigger (Weekdays at 9 AM)
+POST http://localhost:8080/api/workflow/triggers
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "workflowDefinitionId": "{{workflowId}}",
+  "projectId": "{{projectId}}",
+  "name": "Business Hours Report",
+  "description": "Generate reports on weekdays at 9 AM",
+  "type": "SCHEDULED",
+  "config": {
+    "cronExpression": "0 0 9 * * MON-FRI",
+    "timezone": "Europe/Paris"
+  },
+  "defaultInputs": {
+    "reportType": "DAILY_SUMMARY"
+  }
+}
+
+### Create Webhook Trigger
+POST http://localhost:8080/api/workflow/triggers
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "workflowDefinitionId": "{{workflowId}}",
+  "projectId": "{{projectId}}",
+  "name": "External API Webhook",
+  "description": "Triggered by external system via webhook",
+  "type": "WEBHOOK",
+  "config": {
+    "allowedMethods": ["POST"],
+    "bodyMapping": {
+      "satelliteId": "satelliteId",
+      "imageUrl": "imageUrl",
+      "timestamp": "captureTime"
+    }
+  },
+  "defaultInputs": {
+    "source": "EXTERNAL_API"
+  }
+}
+
+### Create Webhook Trigger with Security
+POST http://localhost:8080/api/workflow/triggers
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "workflowDefinitionId": "{{workflowId}}",
+  "projectId": "{{projectId}}",
+  "name": "Secure External Webhook",
+  "description": "Webhook with IP whitelist and custom headers",
+  "type": "WEBHOOK",
+  "config": {
+    "webhookSecret": "my-secure-secret-key-12345",
+    "allowedMethods": ["POST", "PUT"],
+    "ipWhitelist": ["203.0.113.0", "198.51.100.0"],
+    "requiredHeaders": {
+      "X-API-Key": "external-api-key"
+    },
+    "queryParamMapping": {
+      "imageId": "imageId"
+    },
+    "bodyMapping": {
+      "data": "processingData"
+    }
+  }
+}
+
+### Create Event Trigger (Image Upload)
+POST http://localhost:8080/api/workflow/triggers
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "workflowDefinitionId": "{{workflowId}}",
+  "projectId": "{{projectId}}",
+  "name": "Auto-Process New Images",
+  "description": "Automatically process when new images are uploaded",
+  "type": "EVENT",
+  "config": {
+    "eventType": "IMAGE_UPLOADED",
+    "eventSource": "IMAGE_CONTROLLER",
+    "eventFilters": {
+      "imageType": "SENTINEL2"
+    },
+    "eventDataMapping": {
+      "imageId": "imageId",
+      "fileName": "fileName",
+      "uploadedBy": "userId"
+    }
+  },
+  "defaultInputs": {
+    "autoProcess": true,
+    "priority": "HIGH"
+  }
+}
+
+### Create Event Trigger (Processing Complete)
+POST http://localhost:8080/api/workflow/triggers
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "workflowDefinitionId": "{{workflowId}}",
+  "projectId": "{{projectId}}",
+  "name": "Post-Processing Workflow",
+  "description": "Trigger when processing completes",
+  "type": "EVENT",
+  "config": {
+    "eventType": "PROCESSING_COMPLETE",
+    "eventFilters": {
+      "status": "SUCCESS"
+    },
+    "eventDataMapping": {
+      "resultId": "resultId",
+      "processingType": "processingType"
+    }
+  }
+}
+
+### Get All Project Triggers
+GET http://localhost:8080/api/workflow/triggers/project/{{projectId}}
+Authorization: Bearer {{jwt_token}}
+
+### Get Trigger by ID
+GET http://localhost:8080/api/workflow/triggers/{{triggerId}}
+Authorization: Bearer {{jwt_token}}
+
+### Get Trigger Statistics
+GET http://localhost:8080/api/workflow/triggers/{{triggerId}}/stats
+Authorization: Bearer {{jwt_token}}
+
+### Get All Enabled Triggers
+GET http://localhost:8080/api/workflow/triggers/enabled
+Authorization: Bearer {{jwt_token}}
+
+### Get Triggers by Type (SCHEDULED)
+GET http://localhost:8080/api/workflow/triggers/type/SCHEDULED
+Authorization: Bearer {{jwt_token}}
+
+### Get Triggers by Type (WEBHOOK)
+GET http://localhost:8080/api/workflow/triggers/type/WEBHOOK
+Authorization: Bearer {{jwt_token}}
+
+### Get Triggers by Type (EVENT)
+GET http://localhost:8080/api/workflow/triggers/type/EVENT
+Authorization: Bearer {{jwt_token}}
+
+### Update Trigger
+PUT http://localhost:8080/api/workflow/triggers/{{triggerId}}
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "name": "Updated Trigger Name",
+  "description": "Updated description",
+  "config": {
+    "cronExpression": "0 0 12 * * *"
+  },
+  "enabled": true
+}
+
+### Enable Trigger
+POST http://localhost:8080/api/workflow/triggers/{{triggerId}}/enable
+Authorization: Bearer {{jwt_token}}
+
+### Disable Trigger
+POST http://localhost:8080/api/workflow/triggers/{{triggerId}}/disable
+Authorization: Bearer {{jwt_token}}
+
+### Delete Trigger
+DELETE http://localhost:8080/api/workflow/triggers/{{triggerId}}
+Authorization: Bearer {{jwt_token}}
+
+###

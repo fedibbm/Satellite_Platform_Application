@@ -1,0 +1,63 @@
+### Test Webhook Health Check
+GET http://localhost:8080/api/webhooks/health
+
+### Call Webhook (Simple)
+POST http://localhost:8080/api/webhooks/trigger/{{triggerId}}
+Content-Type: application/json
+
+{
+  "imageId": "image-123",
+  "satelliteId": "SAT-001",
+  "timestamp": "2026-02-15T10:00:00Z",
+  "latitude": 40.7128,
+  "longitude": -74.0060
+}
+
+### Call Webhook with Secret
+POST http://localhost:8080/api/webhooks/trigger/{{triggerId}}
+Content-Type: application/json
+X-Webhook-Secret: my-secure-secret-key-12345
+
+{
+  "imageId": "image-456",
+  "processingType": "NDVI",
+  "priority": "HIGH"
+}
+
+### Call Webhook with Custom Headers
+POST http://localhost:8080/api/webhooks/trigger/{{triggerId}}
+Content-Type: application/json
+X-Webhook-Secret: my-secure-secret-key-12345
+X-API-Key: external-api-key
+
+{
+  "data": {
+    "satelliteId": "SAT-002",
+    "captureTime": "2026-02-15T12:00:00Z"
+  }
+}
+
+### Call Webhook GET (with query params)
+GET http://localhost:8080/api/webhooks/trigger/{{triggerId}}?imageId=image-789&type=SENTINEL2
+
+### Call Webhook with Path Parameters
+POST http://localhost:8080/api/webhooks/trigger/{{triggerId}}/path/image123/sentinel2
+Content-Type: application/json
+X-Webhook-Secret: my-secure-secret-key-12345
+
+{
+  "action": "PROCESS",
+  "priority": "HIGH"
+}
+
+### Call Webhook PUT
+PUT http://localhost:8080/api/webhooks/trigger/{{triggerId}}
+Content-Type: application/json
+X-Webhook-Secret: my-secure-secret-key-12345
+
+{
+  "updateType": "STATUS",
+  "newStatus": "READY_FOR_PROCESSING"
+}
+
+###

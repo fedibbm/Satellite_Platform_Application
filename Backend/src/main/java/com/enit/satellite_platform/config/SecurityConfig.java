@@ -68,6 +68,8 @@ public class SecurityConfig {
                         .requestMatchers("/monitoring-websocket/**").permitAll() // Add permission for monitoring endpoint
                         // Allow unauthenticated access to Conductor health and info endpoints
                         .requestMatchers("/api/conductor/health", "/api/conductor/info").permitAll()
+                        // Allow unauthenticated access to webhook endpoints (webhooks validate their own security)
+                        .requestMatchers("/api/webhooks/**").permitAll()
                         // Restrict DELETE requests to /api/account/** to ADMIN role
                         .requestMatchers(HttpMethod.DELETE, "/api/account/**").hasRole("ADMIN")
                         // Restrict admin endpoints (including audit, roles, etc.) to users with ROLE_ADMIN
