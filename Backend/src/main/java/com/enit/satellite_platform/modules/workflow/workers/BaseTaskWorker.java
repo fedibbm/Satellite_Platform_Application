@@ -1,8 +1,13 @@
 package com.enit.satellite_platform.modules.workflow.workers;
 
+import com.enit.satellite_platform.modules.workflow.config.RetryPolicyConfig;
+import com.enit.satellite_platform.modules.workflow.monitoring.WorkflowLogger;
+import com.enit.satellite_platform.modules.workflow.services.CompensationHandler;
+import com.enit.satellite_platform.modules.workflow.services.TaskErrorHandler;
 import com.netflix.conductor.common.metadata.tasks.Task;
 import com.netflix.conductor.common.metadata.tasks.TaskResult;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -10,11 +15,23 @@ import java.util.Map;
 
 /**
  * Abstract base class for all Conductor task workers.
- * Provides common functionality for error handling, logging, and result formatting.
+ * Provides common functionality for error handling, retry logic, compensation, and logging.
  */
 @Slf4j
 @Component
 public abstract class BaseTaskWorker {
+
+    @Autowired(required = false)
+    protected TaskErrorHandler errorHandler;
+
+    @Autowired(required = false)
+    protected CompensationHandler compensationHandler;
+
+    @Autowired(required = false)
+    protected RetryPolicyConfig retryPolicyConfig;
+
+    @Autowired(required = false)
+    protected WorkerConfiguration workerConfiguration;
 
     /**
      * Get the task type this worker handles.
@@ -34,44 +51,129 @@ public abstract class BaseTaskWorker {
 
     /**
      * Main execution method called by Conductor.
-     * Handles common concerns: logging, error handling, and result formatting.
+     * Handles common concerns: logging, error handling, retry logic, and result formatting.
      */
     public TaskResult execute(Task task) {
-        log.info("Worker [{}] executing task: {} (ID: {})", 
-            getTaskDefName(), task.getTaskType(), task.getTaskId());
-        
+        long startTime = System.currentTimeMillis();
+        String workflowId = task.getWorkflowInstanceId();
+        String taskId = task.getTaskId();
+        String taskType = getTaskDefName();
+        int attemptNumber = task.getRetryCount() + 1;
+
+        // Set MDC context for structured logging
+        WorkflowLogger.setTaskContext(taskId, taskType, attemptNumber);
+        WorkflowLogger.logTaskStart(taskType, taskId, task.getInputData());
+
         TaskResult result = new TaskResult(task);
         
         try {
             // Validate input
             validateInput(task);
             
-            // Execute task logic
-            Map<String, Object> output = executeTask(task);
+            // Register compensation actions before execution
+            registerCompensationActions(task);
+            
+            // Execute task logic with timeout monitoring
+            Map<String, Object> output = executeTaskWithTimeout(task);
             
             // Set success result
             result.setStatus(TaskResult.Status.COMPLETED);
             result.setOutputData(output);
             
-            log.info("Worker [{}] completed task: {} successfully", 
-                getTaskDefName(), task.getTaskId());
+            long executionTime = System.currentTimeMillis() - startTime;
+            WorkflowLogger.logTaskSuccess(taskType, taskId, executionTime, output);
+            
+            // Clear compensation actions on success
+            if (compensationHandler != null) {
+                compensationHandler.clearCompensation(workflowId);
+            }
             
         } catch (IllegalArgumentException e) {
-            // Input validation errors
-            log.error("Worker [{}] validation failed for task {}: {}", 
-                getTaskDefName(), task.getTaskId(), e.getMessage());
-            result.setStatus(TaskResult.Status.FAILED);
-            result.setReasonForIncompletion(e.getMessage());
+            // Input validation errors - don't retry
+            long executionTime = System.currentTimeMillis() - startTime;
+            WorkflowLogger.logTaskFailure(taskType, taskId, executionTime, e.getMessage(), e);
+            
+            result.setStatus(TaskResult.Status.FAILED_WITH_TERMINAL_ERROR);
+            result.setReasonForIncompletion("Validation error: " + e.getMessage());
             
         } catch (Exception e) {
-            // Execution errors
-            log.error("Worker [{}] failed to execute task {}: {}", 
-                getTaskDefName(), task.getTaskId(), e.getMessage(), e);
-            result.setStatus(TaskResult.Status.FAILED);
-            result.setReasonForIncompletion("Task execution failed: " + e.getMessage());
+            // Execution errors - handle with retry logic
+            long executionTime = System.currentTimeMillis() - startTime;
+            
+            if (errorHandler != null) {
+                TaskErrorHandler.ErrorHandlingResult errorResult = errorHandler.handleError(
+                    taskType, taskId, workflowId, attemptNumber, e
+                );
+                
+                if (errorResult.isShouldRetry()) {
+                    // Retry with backoff
+                    result.setStatus(TaskResult.Status.FAILED);
+                    result.setReasonForIncompletion("Task execution failed: " + e.getMessage());
+                    result.setCallbackAfterSeconds(errorResult.getRetryDelayMs() / 1000);
+                    
+                    WorkflowLogger.logTaskRetry(taskType, taskId, attemptNumber, 
+                                              errorResult.getMaxAttempts(), errorResult.getRetryDelayMs());
+                } else {
+                    // Final failure - trigger compensation
+                    result.setStatus(TaskResult.Status.FAILED);
+                    result.setReasonForIncompletion("Task execution failed: " + e.getMessage());
+                    
+                    WorkflowLogger.logTaskFailure(taskType, taskId, executionTime, e.getMessage(), e);
+                    
+                    // Execute compensation
+                    if (compensationHandler != null) {
+                        compensationHandler.compensate(workflowId, "Task failed after " + attemptNumber + " attempts");
+                    }
+                }
+            } else {
+                // Fallback without error handler
+                WorkflowLogger.logTaskFailure(taskType, taskId, executionTime, e.getMessage(), e);
+                result.setStatus(TaskResult.Status.FAILED);
+                result.setReasonForIncompletion("Task execution failed: " + e.getMessage());
+            }
+        } finally {
+            // Clear task context from MDC
+            WorkflowLogger.clearTaskContext();
         }
         
         return result;
+    }
+
+    /**
+     * Execute task with timeout monitoring
+     */
+    private Map<String, Object> executeTaskWithTimeout(Task task) throws Exception {
+        // Get timeout for this task type
+        int timeoutSeconds = workerConfiguration != null ? 
+            workerConfiguration.getTimeoutForTask(getTaskDefName()) : 300;
+        
+        // Note: Conductor handles timeout at server level
+        // This is just for logging and monitoring
+        WorkflowLogger.PerformanceTimer timer = WorkflowLogger.startTimer("Task execution: " + getTaskDefName());
+        
+        try {
+            Map<String, Object> result = executeTask(task);
+            long durationMs = timer.stop();
+            
+            if (durationMs > (timeoutSeconds * 1000)) {
+                log.warn("Task execution exceeded expected timeout: {}ms > {}ms", 
+                        durationMs, timeoutSeconds * 1000);
+            }
+            
+            return result;
+        } catch (Exception e) {
+            timer.stop();
+            throw e;
+        }
+    }
+
+    /**
+     * Register compensation actions for this task
+     * Override this method to register task-specific cleanup actions
+     */
+    protected void registerCompensationActions(Task task) {
+        // Default: no compensation actions
+        // Subclasses override to add specific compensation logic
     }
 
     /**

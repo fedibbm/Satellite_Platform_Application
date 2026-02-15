@@ -1,0 +1,66 @@
+### Phase 6: Error Handling & Retry Logic Testing
+### Test error statistics, retry metrics, and monitoring endpoints
+
+@baseUrl = http://localhost:9090/api/workflows
+@token = eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sImVtYWlsIjoidGhlbWF0aWNpYW5AZXhhbXBsZS5jb20iLCJuYW1lIjoidGhlbWF0aWNpYW4xIiwic3ViIjoidGhlbWF0aWNpYW5AZXhhbXBsZS5jb20iLCJpYXQiOjE3NzExMTAzMzUsImV4cCI6MTc3MTE5NjczNX0.W-bg4Z6v5m3dUsdL26DGw6Mq22YQOge46OAorBiwYynXa2uipLUuA1upTQ5CkwkXx6ckwgUWPORvNPWX_kveeg
+@workflowId = 6990fc3d076cc8181df8b96c
+
+### 1. Get monitoring health status
+GET {{baseUrl}}/monitoring/health
+Authorization: Bearer {{token}}
+
+### 2. Get error summary (aggregated metrics)
+GET {{baseUrl}}/monitoring/errors/summary
+Authorization: Bearer {{token}}
+
+### 3. Get all error statistics (all task types)
+GET {{baseUrl}}/monitoring/errors/stats
+Authorization: Bearer {{token}}
+
+### 4. Get error stats for specific task type (load_image)
+GET {{baseUrl}}/monitoring/errors/stats/load_image
+Authorization: Bearer {{token}}
+
+### 5. Get error stats for NDVI processing task
+GET {{baseUrl}}/monitoring/errors/stats/calculate_ndvi
+Authorization: Bearer {{token}}
+
+### 6. Get recent errors for load_image task (last 20)
+GET {{baseUrl}}/monitoring/errors/load_image?limit=20
+Authorization: Bearer {{token}}
+
+### 7. Get all recent errors across all tasks (last 50)
+GET {{baseUrl}}/monitoring/errors?limit=50
+Authorization: Bearer {{token}}
+
+### 8. Execute workflow to generate errors (for testing)
+POST {{baseUrl}}/{{workflowId}}/execute
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "imageId": "TEST_ERROR_HANDLING",
+  "startDate": "2024-01-01",
+  "endDate": "2024-01-31",
+  "region": "test-region"
+}
+
+### 9. Wait and check error stats after execution (wait 10 seconds after previous request)
+GET {{baseUrl}}/monitoring/errors/stats/load_image
+Authorization: Bearer {{token}}
+
+### 10. Get recent errors to see retry attempts
+GET {{baseUrl}}/monitoring/errors/load_image?limit=10
+Authorization: Bearer {{token}}
+
+### 11. Get error summary after test
+GET {{baseUrl}}/monitoring/errors/summary
+Authorization: Bearer {{token}}
+
+### 12. Clear error statistics (admin operation)
+DELETE {{baseUrl}}/monitoring/errors/stats
+Authorization: Bearer {{token}}
+
+### 13. Verify stats cleared
+GET {{baseUrl}}/monitoring/errors/stats
+Authorization: Bearer {{token}}

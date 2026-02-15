@@ -1,5 +1,6 @@
 package com.enit.satellite_platform.modules.workflow.workers;
 
+import com.enit.satellite_platform.modules.workflow.services.CompensationHandler;
 import com.netflix.conductor.common.metadata.tasks.Task;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -90,6 +91,24 @@ public class StorageWorker extends BaseTaskWorker {
         } catch (Exception e) {
             log.error("StorageWorker: Failed to save results: {}", e.getMessage());
             throw new RuntimeException("Failed to save results: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    protected void registerCompensationActions(Task task) {
+        // Register compensation to clean up files if workflow fails later
+        if (compensationHandler != null) {
+            String workflowId = (String) task.getInputData().get("workflowId");
+            String projectId = (String) task.getInputData().get("projectId");
+            
+            if (workflowId != null && projectId != null) {
+                Path storagePath = Paths.get(resultsPath, projectId, workflowId);
+                compensationHandler.registerCompensation(
+                    task.getWorkflowInstanceId(),
+                    CompensationHandler.deleteDirectory(storagePath)
+                );
+                log.debug("Registered compensation to delete directory: {}", storagePath);
+            }
         }
     }
 
