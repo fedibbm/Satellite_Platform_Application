@@ -1,0 +1,90 @@
+### ============================================
+### Phase 5: Execution History & Status Tracking
+### ============================================
+
+### Variables
+@baseUrl = http://localhost:9090
+@token = eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJST0xFX1RIRU1BVElDSUFOIl0sImVtYWlsIjoidGhlbWF0aWNpYW5AZXhhbXBsZS5jb20iLCJuYW1lIjoidGhlbWF0aWNpYW4xIiwic3ViIjoidGhlbWF0aWNpYW5AZXhhbXBsZS5jb20iLCJpYXQiOjE3NzExMTAzMzUsImV4cCI6MTc3MTE5NjczNX0.W-bg4Z6v5m3dUsdL26DGw6Mq22YQOge46OAorBiwYynXa2uipLUuA1upTQ5CkwkXx6ckwgUWPORvNPWX_kveeg
+@workflowId = 6990fc3d076cc8181df8b96c
+@executionId = ceec2ff6-7e88-4dc3-888a-0f390ca2432f
+@projectId = project123
+
+### ============================================
+### 1. Get Execution History for Workflow
+### ============================================
+GET {{baseUrl}}/api/workflows/{{workflowId}}/executions?page=0&size=10
+Authorization: Bearer {{token}}
+
+### ============================================
+### 2. Get Execution History by Project
+### ============================================
+GET {{baseUrl}}/api/workflows/project/{{projectId}}/executions?page=0&size=10
+Authorization: Bearer {{token}}
+
+### ============================================
+### 3. Get Running Executions
+### ============================================
+GET {{baseUrl}}/api/workflows/executions/status/RUNNING?page=0&size=10
+Authorization: Bearer {{token}}
+
+### ============================================
+### 4. Get Completed Executions
+### ============================================
+GET {{baseUrl}}/api/workflows/executions/status/COMPLETED?page=0&size=10
+Authorization: Bearer {{token}}
+
+### ============================================
+### 5. Get Failed Executions
+### ============================================
+GET {{baseUrl}}/api/workflows/executions/status/FAILED?page=0&size=10
+Authorization: Bearer {{token}}
+
+### ============================================
+### 6. Get Execution Statistics (All)
+### ============================================
+GET {{baseUrl}}/api/workflows/executions/statistics
+Authorization: Bearer {{token}}
+
+### ============================================
+### 7. Get Execution Statistics (By Project)
+### ============================================
+GET {{baseUrl}}/api/workflows/executions/statistics?projectId={{projectId}}
+Authorization: Bearer {{token}}
+
+### ============================================
+### 8. Get Specific Execution History
+### ============================================
+GET {{baseUrl}}/api/workflows/execution/{{executionId}}/history
+Authorization: Bearer {{token}}
+
+### ============================================
+### 9. Get Recent Executions
+### ============================================
+GET {{baseUrl}}/api/workflows/executions/recent
+Authorization: Bearer {{token}}
+
+### ============================================
+### 10. Execute Workflow (to create history)
+### ============================================
+POST {{baseUrl}}/api/workflows/{{workflowId}}/execute
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "imageId": "TEST_EXEC_HISTORY_001",
+  "userId": "thematician@example.com",
+  "projectId": "project123",
+  "testRun": true
+}
+
+### ============================================
+### 11. Get Execution Status (triggers history update)
+### ============================================
+GET {{baseUrl}}/api/workflows/execution/{{executionId}}/status
+Authorization: Bearer {{token}}
+
+### ============================================
+### 12. Get Execution Details (triggers history update)
+### ============================================
+GET {{baseUrl}}/api/workflows/execution/{{executionId}}/details
+Authorization: Bearer {{token}}

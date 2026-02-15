@@ -1,7 +1,9 @@
 package com.enit.satellite_platform.modules.workflow.controllers;
 
 import com.enit.satellite_platform.modules.workflow.dto.*;
+import com.enit.satellite_platform.modules.workflow.entities.ExecutionHistory;
 import com.enit.satellite_platform.modules.workflow.services.ConductorRegistrationService;
+import com.enit.satellite_platform.modules.workflow.services.ExecutionHistoryService;
 import com.enit.satellite_platform.modules.workflow.services.WorkflowDefinitionService;
 import com.enit.satellite_platform.modules.workflow.services.WorkflowExecutionService;
 import com.netflix.conductor.common.metadata.workflow.WorkflowDef;
@@ -27,6 +29,7 @@ public class WorkflowController {
     private final WorkflowDefinitionService workflowDefinitionService;
     private final ConductorRegistrationService conductorRegistrationService;
     private final WorkflowExecutionService workflowExecutionService;
+    private final ExecutionHistoryService executionHistoryService;
     
     /**
      * Create a new workflow
@@ -168,8 +171,10 @@ public class WorkflowController {
     @PostMapping("/{id}/execute")
     public ResponseEntity<Map<String, Object>> executeWorkflow(
             @PathVariable String id,
-            @RequestBody(required = false) Map<String, Object> input) {
+            @RequestBody(required = false) Map<String, Object> input,
+            Authentication authentication) {
         WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
+        String userId = getUserId(authentication);
         
         String conductorWorkflowName = workflow.getProjectId() + "_" + 
                 workflow.getName().toLowerCase().replaceAll("\\s+", "_").replaceAll("[^a-z0-9_]", "");
@@ -179,7 +184,14 @@ public class WorkflowController {
             input = new HashMap<>();
         }
         
-        String workflowId = workflowExecutionService.startWorkflow(conductorWorkflowName, 1, input);
+        String workflowId = workflowExecutionService.startWorkflow(
+            conductorWorkflowName, 
+            1, 
+            input,
+            id,  // workflowDefinitionId
+            workflow.getProjectId(),
+            userId
+        );
         
         Map<String, Object> response = new HashMap<>();
         response.put("workflowId", workflowId);
@@ -269,6 +281,105 @@ public class WorkflowController {
         response.put("message", "Workflow restarted successfully");
         
         return ResponseEntity.ok(response);
+    }
+    
+    // ============================================
+    // EXECUTION HISTORY ENDPOINTS (Phase 5)
+    // ============================================
+    
+    /**
+     * Get execution history for a specific workflow definition
+     */
+    @GetMapping("/{id}/executions")
+    public ResponseEntity<Map<String, Object>> getWorkflowExecutions(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        var executions = executionHistoryService.getByWorkflowDefinitionId(id, page, size);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", executions.getContent());
+        response.put("totalElements", executions.getTotalElements());
+        response.put("totalPages", executions.getTotalPages());
+        response.put("currentPage", page);
+        response.put("size", size);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Get execution history by project
+     */
+    @GetMapping("/project/{projectId}/executions")
+    public ResponseEntity<Map<String, Object>> getProjectExecutions(
+            @PathVariable String projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        var executions = executionHistoryService.getByProjectId(projectId, page, size);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", executions.getContent());
+        response.put("totalElements", executions.getTotalElements());
+        response.put("totalPages", executions.getTotalPages());
+        response.put("currentPage", page);
+        response.put("size", size);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Get execution history by status
+     */
+    @GetMapping("/executions/status/{status}")
+    public ResponseEntity<Map<String, Object>> getExecutionsByStatus(
+            @PathVariable String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        ExecutionHistory.ExecutionStatus executionStatus = 
+            ExecutionHistory.ExecutionStatus.valueOf(status.toUpperCase());
+        
+        var executions = executionHistoryService.getByStatus(executionStatus, page, size);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", executions.getContent());
+        response.put("totalElements", executions.getTotalElements());
+        response.put("totalPages", executions.getTotalPages());
+        response.put("currentPage", page);
+        response.put("size", size);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Get execution statistics
+     */
+    @GetMapping("/executions/statistics")
+    public ResponseEntity<Map<String, Object>> getExecutionStatistics(
+            @RequestParam(required = false) String projectId) {
+        Map<String, Object> stats = executionHistoryService.getExecutionStatistics(projectId);
+        return ResponseEntity.ok(stats);
+    }
+    
+    /**
+     * Get specific execution history
+     */
+    @GetMapping("/execution/{workflowId}/history")
+    public ResponseEntity<ExecutionHistory> getExecutionHistory(@PathVariable String workflowId) {
+        return executionHistoryService.getByWorkflowExecutionId(workflowId)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    /**
+     * Get recent executions
+     */
+    @GetMapping("/executions/recent")
+    public ResponseEntity<List<ExecutionHistory>> getRecentExecutions() {
+        List<ExecutionHistory> executions = executionHistoryService.getRecentExecutions(10);
+        return ResponseEntity.ok(executions);
     }
     
     /**

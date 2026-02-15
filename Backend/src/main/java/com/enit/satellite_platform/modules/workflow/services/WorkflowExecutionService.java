@@ -1,5 +1,6 @@
 package com.enit.satellite_platform.modules.workflow.services;
 
+import com.enit.satellite_platform.modules.workflow.entities.ExecutionHistory;
 import com.netflix.conductor.common.metadata.workflow.StartWorkflowRequest;
 import io.orkes.conductor.client.http.OrkesWorkflowClient;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import java.util.Map;
 /**
  * Service for executing workflows in Conductor.
  * Handles workflow start, status checks, and result retrieval.
+ * Integrated with ExecutionHistoryService for tracking.
  */
 @Slf4j
 @Service
@@ -19,6 +21,7 @@ import java.util.Map;
 public class WorkflowExecutionService {
 
     private final OrkesWorkflowClient workflowClient;
+    private final ExecutionHistoryService executionHistoryService;
 
     /**
      * Start a workflow execution with input parameters.
@@ -26,11 +29,20 @@ public class WorkflowExecutionService {
      * @param workflowName Name of the workflow to start
      * @param version Workflow version (use 1 for latest)
      * @param input Input parameters for the workflow
+     * @param workflowDefinitionId MongoDB workflow definition ID
+     * @param projectId Project ID
+     * @param executedBy User who started the execution
      * @return Workflow execution ID
      */
-    public String startWorkflow(String workflowName, Integer version, Map<String, Object> input) {
+    public String startWorkflow(
+            String workflowName, 
+            Integer version, 
+            Map<String, Object> input,
+            String workflowDefinitionId,
+            String projectId,
+            String executedBy) {
         try {
-            log.info("Starting workflow: {} (version: {})", workflowName, version);
+            log.info("Starting workflow: {} (version: {}) for project: {}", workflowName, version, projectId);
             
             StartWorkflowRequest request = new StartWorkflowRequest();
             request.setName(workflowName);
@@ -40,6 +52,17 @@ public class WorkflowExecutionService {
             String workflowId = workflowClient.startWorkflow(request);
             
             log.info("Workflow started successfully. Execution ID: {}", workflowId);
+            
+            // Create execution history record
+            executionHistoryService.createExecutionHistory(
+                workflowId, 
+                workflowDefinitionId, 
+                workflowName, 
+                projectId, 
+                executedBy, 
+                input
+            );
+            
             return workflowId;
             
         } catch (Exception e) {
@@ -59,6 +82,9 @@ public class WorkflowExecutionService {
             log.info("Fetching workflow status for: {}", workflowId);
             
             var workflow = workflowClient.getWorkflow(workflowId, false);
+            
+            // Update execution history
+            executionHistoryService.updateFromWorkflow(workflow);
             
             Map<String, Object> status = new HashMap<>();
             status.put("workflowId", workflow.getWorkflowId());
@@ -90,6 +116,9 @@ public class WorkflowExecutionService {
             log.info("Fetching workflow details for: {}", workflowId);
             
             var workflow = workflowClient.getWorkflow(workflowId, true);
+            
+            // Update execution history
+            executionHistoryService.updateFromWorkflow(workflow);
             
             Map<String, Object> details = new HashMap<>();
             details.put("workflowId", workflow.getWorkflowId());
