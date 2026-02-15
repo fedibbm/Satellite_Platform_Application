@@ -695,6 +695,9 @@ async def fetch_image_metadata(
         images_to_export = []
         total_export_size = 0
         
+        # Initialize selected_bands early so it can be used in vis_params
+        selected_bands = bands if bands else None
+        
         # Handle visualization parameters
         vis_params = visualization_params.copy() if visualization_params else {}
         # Only set default bands if not specified, but respect user input
@@ -738,6 +741,7 @@ async def fetch_image_metadata(
             analysis_results = {}
             histogram_results = None
             zonal_stats_results = None
+            vis_image = None  # Initialize vis_image to None
 
             try:
                 # Select bands if specified

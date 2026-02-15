@@ -1,0 +1,28 @@
+### Test GEE Workflow with Real Endpoint
+POST http://localhost:8080/api/tasks
+Content-Type: application/json
+
+{
+  "name": "load_image",
+  "referenceTaskName": "test_gee_fetch_real",
+  "inputData": {
+    "imageId": "COPERNICUS/S2_SR/20230103T101411_20230103T101412_T32SNE",
+    "projectId": "test_project_001",
+    "region": {
+      "type": "Polygon",
+      "coordinates": [[[10.0, 36.0], [10.0, 37.0], [11.0, 37.0], [11.0, 36.0], [10.0, 36.0]]]
+    }
+  },
+  "taskDefName": "load_image",
+  "workflowInstanceId": "test_workflow_gee_001",
+  "taskId": "test_task_gee_001"
+}
+
+### Check error statistics for GEE worker
+GET http://localhost:9090/monitoring/errors/stats/load_image
+
+### Get recent errors if any
+GET http://localhost:9090/monitoring/errors/load_image?limit=5
+
+### Check all error summary
+GET http://localhost:9090/monitoring/errors/summary

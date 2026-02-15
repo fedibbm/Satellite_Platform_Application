@@ -672,6 +672,80 @@ async def download_file(file_id):
         logger.error(f"Error downloading file {file_id}: {str(e)}")
         return jsonify({'error': f"Internal server error: {str(e)}"}), 500
 
+@service_bp.route('/api/gee/fetch', methods=['POST'])
+async def fetch_satellite_data():
+    """
+    Simple endpoint for workflow integration - fetches satellite image metadata
+    Compatible with Conductor workflow worker integration
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+
+        logger.info(f"Workflow fetch request received: {data}")
+        
+        # Extract parameters
+        image_id = data.get('imageId') or data.get('image_id')
+        collection_id = data.get('collectionId') or data.get('collection_id') or 'COPERNICUS/S2_SR'
+        start_date = data.get('startDate') or data.get('start_date') or '2023-01-01'
+        end_date = data.get('endDate') or data.get('end_date') or '2023-12-31'
+        region = data.get('region')
+        bands = data.get('bands', ['B4', 'B3', 'B2'])  # Default RGB bands
+        
+        # Build minimal request for metadata
+        fetch_request = {
+            'analysis_type': 'metadata',
+            'bands': bands,
+            'scale': data.get('scale', 30),
+            'images_number': 1  # Just get first image for workflow
+        }
+        
+        if image_id:
+            fetch_request['image_id'] = image_id
+            fetch_request['collection_id'] = collection_id  # Still needed by the function
+        else:
+            fetch_request['collection_id'] = collection_id
+            fetch_request['start_date'] = start_date
+            fetch_request['end_date'] = end_date
+        
+        if region:
+            fetch_request['region'] = region
+        
+        logger.info(f"Calling fetch_image_metadata with: {fetch_request}")
+        
+        # Fetch metadata
+        metadata_result = await fetch_image_metadata(**fetch_request)
+        
+        # Extract image info
+        images = metadata_result.get('images', [])
+        first_image = images[0] if images else {}
+        
+        # Format response for workflow
+        response = {
+            'status': 'success',
+            'message': 'Satellite data fetched successfully',
+            'imageData': {
+                'images': images,
+                'totalResults': len(images),
+                'thumbnailUrl': first_image.get('thumbnailUrl'),
+                'properties': first_image.get('properties', {})
+            },
+            'imageId': image_id or first_image.get('id'),
+            'timestamp': datetime.datetime.now().isoformat()
+        }
+        
+        logger.info(f"Workflow fetch successful: {response.get('imageId')}")
+        return jsonify(response), 200
+        
+    except Exception as e:
+        logger.error(f"Error in fetch endpoint: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'message': 'Failed to fetch satellite data'
+        }), 500
+
 
 # Register the blueprint with the Flask app
 def register_blueprints(app):
