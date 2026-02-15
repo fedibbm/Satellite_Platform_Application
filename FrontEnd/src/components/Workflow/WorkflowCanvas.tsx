@@ -35,6 +35,7 @@ interface WorkflowCanvasProps {
   initialEdges?: WorkflowEdgeType[];
   onNodesChange?: (nodes: WorkflowNodeType[]) => void;
   onEdgesChange?: (edges: WorkflowEdgeType[]) => void;
+  onNodeClick?: (node: WorkflowNodeType) => void;
   readOnly?: boolean;
 }
 
@@ -43,6 +44,7 @@ export default function WorkflowCanvas({
   initialEdges = [],
   onNodesChange,
   onEdgesChange,
+  onNodeClick,
   readOnly = false,
 }: WorkflowCanvasProps) {
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState(initialNodes as Node[]);
@@ -85,6 +87,14 @@ export default function WorkflowCanvas({
     [onEdgesChangeInternal, onEdgesChange, edges]
   );
 
+  const handleNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (readOnly) return;
+      onNodeClick?.(node as WorkflowNodeType);
+    },
+    [onNodeClick, readOnly]
+  );
+
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -93,11 +103,12 @@ export default function WorkflowCanvas({
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
         nodesDraggable={!readOnly}
         nodesConnectable={!readOnly}
-        elementsSelectable={!readOnly}
+        elementsSelectable={true}
       >
         <Controls />
         <MiniMap />

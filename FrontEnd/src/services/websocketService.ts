@@ -7,6 +7,7 @@ import {
   ReadReceipt,
   SendMessageRequest
 } from '@/types/messaging';
+import { WorkflowStatusUpdate, TaskStatusUpdate } from '@/types/conductor';
 
 // Connect directly to backend WebSocket (cookies set with domain=localhost work across ports)
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:9090/ws';
@@ -16,6 +17,8 @@ export type TypingCallback = (indicator: TypingIndicator) => void;
 export type PresenceCallback = (presence: PresenceUpdate) => void;
 export type ReceiptCallback = (receipt: ReadReceipt) => void;
 export type ErrorCallback = (error: any) => void;
+export type WorkflowStatusCallback = (status: WorkflowStatusUpdate) => void;
+export type TaskStatusCallback = (status: TaskStatusUpdate) => void;
 
 class WebSocketService {
   private client: Client | null = null;
@@ -30,6 +33,8 @@ class WebSocketService {
   private presenceCallbacks: PresenceCallback[] = [];
   private receiptCallbacks: ReceiptCallback[] = [];
   private errorCallbacks: ErrorCallback[] = [];
+  private workflowStatusCallbacks: Map<string, WorkflowStatusCallback> = new Map();
+  private taskStatusCallbacks: Map<string, TaskStatusCallback> = new Map();
   private onConnectCallback: (() => void) | null = null;
   private onDisconnectCallback: (() => void) | null = null;
 
@@ -275,6 +280,90 @@ class WebSocketService {
 
   setOnDisconnect(callback: () => void) {
     this.onDisconnectCallback = callback;
+  }
+
+  // ============================================
+  // Workflow Execution Monitoring
+  // ============================================
+
+  /**
+   * Subscribe to workflow execution status updates
+   * @param workflowId Conductor workflow execution ID
+   * @param callback Function to call when status updates
+   * @returns Unsubscribe function
+   */
+  subscribeToWorkflowStatus(workflowId: string, callback: WorkflowStatusCallback): () => void {
+    if (!this.client || !this.connected) {
+      console.warn('WebSocket not connected, cannot subscribe to workflow status');
+      return () => {};
+    }
+
+    console.log(`Subscribing to workflow status: ${workflowId}`);
+
+    const subscription = this.client.subscribe(`/topic/workflow/${workflowId}/status`, (message) => {
+      try {
+        const status: WorkflowStatusUpdate = JSON.parse(message.body);
+        callback(status);
+      } catch (error) {
+        console.error('Error parsing workflow status update:', error);
+      }
+    });
+
+    this.workflowStatusCallbacks.set(workflowId, callback);
+
+    // Return unsubscribe function
+    return () => {
+      console.log(`Unsubscribing from workflow status: ${workflowId}`);
+      subscription.unsubscribe();
+      this.workflowStatusCallbacks.delete(workflowId);
+    };
+  }
+
+  /**
+   * Subscribe to task execution updates within a workflow
+   * @param workflowId Conductor workflow execution ID
+   * @param callback Function to call when task status updates
+   * @returns Unsubscribe function
+   */
+  subscribeToTaskStatus(workflowId: string, callback: TaskStatusCallback): () => void {
+    if (!this.client || !this.connected) {
+      console.warn('WebSocket not connected, cannot subscribe to task status');
+      return () => {};
+    }
+
+    console.log(`Subscribing to task status for workflow: ${workflowId}`);
+
+    const subscription = this.client.subscribe(`/topic/workflow/${workflowId}/tasks`, (message) => {
+      try {
+        const status: TaskStatusUpdate = JSON.parse(message.body);
+        callback(status);
+      } catch (error) {
+        console.error('Error parsing task status update:', error);
+      }
+    });
+
+    this.taskStatusCallbacks.set(workflowId, callback);
+
+    // Return unsubscribe function
+    return () => {
+      console.log(`Unsubscribing from task status for workflow: ${workflowId}`);
+      subscription.unsubscribe();
+      this.taskStatusCallbacks.delete(workflowId);
+    };
+  }
+
+  /**
+   * Unsubscribe from workflow status updates
+   */
+  unsubscribeFromWorkflowStatus(workflowId: string): void {
+    this.workflowStatusCallbacks.delete(workflowId);
+  }
+
+  /**
+   * Unsubscribe from task status updates
+   */
+  unsubscribeFromTaskStatus(workflowId: string): void {
+    this.taskStatusCallbacks.delete(workflowId);
   }
 }
 

@@ -23,7 +23,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/workflows")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class WorkflowController {
     
     private final WorkflowDefinitionService workflowDefinitionService;

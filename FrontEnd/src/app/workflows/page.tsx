@@ -33,10 +33,9 @@ export default function WorkflowsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || '';
       const [workflowsData, templatesData] = await Promise.all([
-        workflowService.getAllWorkflows(token),
-        workflowService.getWorkflowTemplates(token),
+        workflowService.getAllWorkflows(),
+        workflowService.getWorkflowTemplates(),
       ]);
       setWorkflows(workflowsData);
       setTemplates(templatesData);
@@ -58,9 +57,9 @@ export default function WorkflowsPage() {
   const handleExecuteWorkflow = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     try {
-      const token = localStorage.getItem('token') || '';
-      await workflowService.executeWorkflow(id, token);
-      alert('Workflow execution started!');
+      const result = await workflowService.executeWorkflow(id);
+      // Redirect to execution details page
+      router.push(`/workflows/executions/${result.workflowId}`);
     } catch (error) {
       console.error('Error executing workflow:', error);
       alert('Failed to execute workflow');
@@ -68,8 +67,6 @@ export default function WorkflowsPage() {
   };
 
   const WorkflowCard = ({ workflow }: { workflow: Workflow }) => {
-    const lastExecution = workflow.executions?.[0];
-    
     return (
       <div
         onClick={() => handleWorkflowClick(workflow.id)}
@@ -102,14 +99,11 @@ export default function WorkflowsPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
               <ClockIcon className="h-4 w-4" />
-              <span>v{workflow.currentVersion}</span>
+              <span>v{workflow.version || '1.0'}</span>
             </div>
-            {lastExecution && (
-              <div className="flex items-center gap-1">
-                <RocketLaunchIcon className="h-4 w-4" />
-                <span>Last: {new Date(lastExecution.startedAt).toLocaleDateString()}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1">
+              <span>Updated: {new Date(workflow.updatedAt).toLocaleDateString()}</span>
+            </div>
           </div>
           
           {workflow.status === 'ACTIVE' && !workflow.isTemplate && (

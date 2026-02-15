@@ -61,13 +61,14 @@ export interface Workflow {
   description: string;
   status: WorkflowStatus;
   projectId?: string;
-  currentVersion: string;
-  versions: WorkflowVersion[];
-  executions: WorkflowExecution[];
+  version: string; // Current version from backend
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
   createdAt: string;
   updatedAt: string;
   createdBy: string;
   tags?: string[];
+  timeoutSeconds?: number;
   isTemplate?: boolean;
 }
 

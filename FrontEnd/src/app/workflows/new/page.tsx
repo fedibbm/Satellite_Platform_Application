@@ -21,17 +21,11 @@ export default function NewWorkflowPage() {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || '';
-      const workflow = await workflowService.createWorkflow(
-        {
-          name,
-          description,
-          nodes: [],
-          edges: [],
-        },
-        token
-      );
-      router.push(`/workflows/${workflow.id}`);
+      const workflow = await workflowService.createWorkflow({
+        name,
+        description,
+      });
+      router.push(`/workflows/${workflow.id}/edit`);
     } catch (error) {
       console.error('Error creating workflow:', error);
       alert('Failed to create workflow');

@@ -1,30 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import dynamic from 'next/dynamic';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { workflowService } from '@/services/workflow.service';
-import { Workflow, WorkflowNode, WorkflowEdge } from '@/types/workflow';
-
-// Lazy load heavy workflow components
-const WorkflowCanvas = dynamic(() => import('@/components/Workflow/WorkflowCanvas'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center h-96">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-    </div>
-  ),
-});
-
-const NodePalette = dynamic(() => import('@/components/Workflow/NodePalette'), {
-  ssr: false,
-});
+import { Workflow } from '@/types/workflow';
 import {
   ArrowLeftIcon,
   PlayIcon,
-  ClockIcon,
   DocumentTextIcon,
-  Cog6ToothIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function WorkflowDetailPage() {
@@ -34,9 +19,9 @@ export default function WorkflowDetailPage() {
 
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'canvas' | 'versions' | 'executions' | 'settings'>('canvas');
-  const [nodes, setNodes] = useState<WorkflowNode[]>([]);
-  const [edges, setEdges] = useState<WorkflowEdge[]>([]);
+  const [activeTab, setActiveTab] = useState<'details' | 'executions'>('details');
+  const [registering, setRegistering] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
 
   useEffect(() => {
     if (workflowId) {
@@ -47,16 +32,9 @@ export default function WorkflowDetailPage() {
   const loadWorkflow = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || '';
-      const data = await workflowService.getWorkflowById(workflowId, token);
+      const data = await workflowService.getWorkflowById(workflowId);
       setWorkflow(data);
-      
-      // Load current version nodes and edges
-      const currentVersion = data.versions.find(v => v.version === data.currentVersion);
-      if (currentVersion) {
-        setNodes(currentVersion.nodes);
-        setEdges(currentVersion.edges);
-      }
+      setIsRegistered(data.nodes && data.nodes.length > 0);
     } catch (error) {
       console.error('Error loading workflow:', error);
     } finally {
@@ -64,49 +42,28 @@ export default function WorkflowDetailPage() {
     }
   };
 
-  const handleAddNode = useCallback((type: string) => {
-    const newNode: WorkflowNode = {
-      id: `node-${Date.now()}`,
-      type: type as any,
-      position: { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
-      data: {
-        label: `New ${type} node`,
-        description: '',
-        config: {},
-      },
-    };
-    setNodes((nds) => [...nds, newNode]);
-  }, []);
-
-  const handleNodesChange = useCallback((newNodes: WorkflowNode[]) => {
-    setNodes(newNodes);
-  }, []);
-
-  const handleEdgesChange = useCallback((newEdges: WorkflowEdge[]) => {
-    setEdges(newEdges);
-  }, []);
-
-  const handleSave = async () => {
+  const handleRegister = async () => {
     try {
-      const token = localStorage.getItem('token') || '';
-      await workflowService.updateWorkflow(
-        workflowId,
-        { nodes, edges, changelog: 'Updated workflow design' },
-        token
-      );
-      alert('Workflow saved successfully!');
+      setRegistering(true);
+      await workflowService.registerWorkflow(workflowId);
+      alert('Workflow registered with Conductor successfully!');
+      setIsRegistered(true);
     } catch (error) {
-      console.error('Error saving workflow:', error);
-      alert('Failed to save workflow');
+      console.error('Error registering workflow:', error);
+      alert('Failed to register workflow');
+    } finally {
+      setRegistering(false);
     }
   };
 
   const handleExecute = async () => {
+    if (!isRegistered) {
+      alert('Please register the workflow with Conductor first');
+      return;
+    }
     try {
-      const token = localStorage.getItem('token') || '';
-      await workflowService.executeWorkflow(workflowId, token);
-      alert('Workflow execution started!');
-      loadWorkflow(); // Reload to show new execution
+      const result = await workflowService.executeWorkflow(workflowId);
+      router.push(`/workflows/executions/${result.workflowId}`);
     } catch (error) {
       console.error('Error executing workflow:', error);
       alert('Failed to execute workflow');
@@ -147,16 +104,31 @@ export default function WorkflowDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">v{workflow.currentVersion}</span>
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              Save
-            </button>
+            <span className="text-sm text-gray-600">v{workflow.version || '1.0'}</span>
+            {isRegistered ? (
+              <span className="flex items-center gap-1 text-sm text-green-600">
+                <CheckCircleIcon className="h-4 w-4" />
+                Registered
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-sm text-gray-500">
+                <XCircleIcon className="h-4 w-4" />
+                Not Registered
+              </span>
+            )}
+            {!isRegistered && (
+              <button
+                onClick={handleRegister}
+                disabled={registering}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+              >
+                {registering ? 'Registering...' : 'Register with Conductor'}
+              </button>
+            )}
             <button
               onClick={handleExecute}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={!isRegistered}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <PlayIcon className="h-5 w-5" />
               Execute
@@ -168,10 +140,8 @@ export default function WorkflowDetailPage() {
         <div className="mt-4 border-t border-gray-200 pt-4">
           <nav className="flex space-x-8">
             {[
-              { id: 'canvas', label: 'Canvas', icon: Cog6ToothIcon },
-              { id: 'versions', label: 'Versions', icon: ClockIcon },
+              { id: 'details', label: 'Details', icon: DocumentTextIcon },
               { id: 'executions', label: 'Executions', icon: PlayIcon },
-              { id: 'settings', label: 'Settings', icon: DocumentTextIcon },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -194,149 +164,109 @@ export default function WorkflowDetailPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {activeTab === 'canvas' && (
-          <>
-            <div className="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
-              <NodePalette onAddNode={handleAddNode} />
-            </div>
-            <div className="flex-1">
-              <WorkflowCanvas
-                initialNodes={nodes}
-                initialEdges={edges}
-                onNodesChange={handleNodesChange}
-                onEdgesChange={handleEdgesChange}
-              />
-            </div>
-          </>
-        )}
-
-        {activeTab === 'versions' && (
-          <div className="flex-1 p-6 overflow-y-auto">
-            <h2 className="text-xl font-semibold mb-4">Version History</h2>
-            <div className="space-y-4">
-              {workflow.versions.map((version) => (
-                <div
-                  key={version.version}
-                  className="bg-white rounded-lg p-4 border border-gray-200"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold">{version.version}</span>
-                    {version.version === workflow.currentVersion && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                        Current
-                      </span>
-                    )}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 'details' && (
+          <div className="h-full p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <h2 className="text-xl font-semibold mb-4">Workflow Information</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <p className="text-sm text-gray-900">{workflow.name}</p>
                   </div>
-                  <p className="text-sm text-gray-600">{version.changelog || 'No changelog'}</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {new Date(version.createdAt).toLocaleString()} by {version.createdBy}
-                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <p className="text-sm text-gray-900">{workflow.description}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <span className={`inline-flex px-2 py-1 text-xs rounded ${
+                        workflow.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                        workflow.status === 'DRAFT' ? 'bg-gray-100 text-gray-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {workflow.status}
+                      </span>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Version</label>
+                      <p className="text-sm text-gray-900">{workflow.version || '1.0'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Created</label>
+                      <p className="text-sm text-gray-600">
+                        {new Date(workflow.createdAt).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500">by {workflow.createdBy}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
+                      <p className="text-sm text-gray-600">
+                        {new Date(workflow.updatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <h2 className="text-xl font-semibold mb-4">Workflow Tasks</h2>
+                {workflow.nodes && workflow.nodes.length > 0 ? (
+                  <div className="space-y-3">
+                    {workflow.nodes.map((node, index) => (
+                      <div key={node.id} className="border border-gray-200 rounded p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                              <h3 className="font-semibold">{node.data?.label || node.id}</h3>
+                              <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                                {node.type}
+                              </span>
+                            </div>
+                            {node.data?.description && (
+                              <p className="text-sm text-gray-600 mt-1">{node.data.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No tasks configured yet</p>
+                    <button
+                      onClick={() => router.push(`/workflows/${workflowId}/edit`)}
+                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Configure Tasks
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'executions' && (
-          <div className="flex-1 p-6 overflow-y-auto">
-            <h2 className="text-xl font-semibold mb-4">Execution History</h2>
-            {workflow.executions.length > 0 ? (
-              <div className="space-y-4">
-                {workflow.executions.map((execution) => (
-                  <div
-                    key={execution.id}
-                    className="bg-white rounded-lg p-4 border border-gray-200"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold">Execution {execution.id}</span>
-                      <span
-                        className={`px-2 py-1 text-xs rounded ${
-                          execution.status === 'completed'
-                            ? 'bg-green-100 text-green-700'
-                            : execution.status === 'failed'
-                            ? 'bg-red-100 text-red-700'
-                            : execution.status === 'running'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {execution.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">Version: {execution.version}</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Started: {new Date(execution.startedAt).toLocaleString()}
-                    </p>
-                    {execution.completedAt && (
-                      <p className="text-xs text-gray-500">
-                        Completed: {new Date(execution.completedAt).toLocaleString()}
-                      </p>
-                    )}
-                    {execution.logs.length > 0 && (
-                      <div className="mt-3 space-y-1">
-                        {execution.logs.slice(0, 3).map((log, idx) => (
-                          <p key={idx} className="text-xs text-gray-600">
-                            [{log.level}] {log.message}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500">No executions yet</p>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'settings' && (
-          <div className="flex-1 p-6 overflow-y-auto">
-            <h2 className="text-xl font-semibold mb-4">Workflow Settings</h2>
-            <div className="bg-white rounded-lg p-6 border border-gray-200 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  value={workflow.name}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  value={workflow.description}
-                  readOnly
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={workflow.status}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+          <div className="h-full p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white rounded-lg p-6 border border-gray-200 text-center">
+                <p className="text-gray-500 mb-4">
+                  To view execution details, execute this workflow and monitor it in real-time
+                </p>
+                <button
+                  onClick={handleExecute}
+                  disabled={!isRegistered}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
-                  <option value="DRAFT">Draft</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="PAUSED">Paused</option>
-                  <option value="ARCHIVED">Archived</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Created</label>
-                <p className="text-sm text-gray-600">
-                  {new Date(workflow.createdAt).toLocaleString()} by {workflow.createdBy}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
-                <p className="text-sm text-gray-600">
-                  {new Date(workflow.updatedAt).toLocaleString()}
-                </p>
+                  <PlayIcon className="h-5 w-5" />
+                  Execute Workflow
+                </button>
               </div>
             </div>
           </div>
