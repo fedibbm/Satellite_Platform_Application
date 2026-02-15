@@ -115,6 +115,14 @@ public class WorkflowDefinitionService {
         if (request.getStatus() != null) {
             workflow.setStatus(request.getStatus());
         }
+        if (request.getNodes() != null) {
+            workflow.setNodes(request.getNodes());
+            log.info("Updating workflow nodes: {} nodes", request.getNodes().size());
+        }
+        if (request.getEdges() != null) {
+            workflow.setEdges(request.getEdges());
+            log.info("Updating workflow edges: {} edges", request.getEdges().size());
+        }
         
         workflow.setUpdatedAt(LocalDateTime.now());
         

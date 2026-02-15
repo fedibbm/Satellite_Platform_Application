@@ -25,6 +25,7 @@ export default function WorkflowDetailPage() {
 
   useEffect(() => {
     if (workflowId) {
+      console.log('Loading workflow:', workflowId);
       loadWorkflow();
     }
   }, [workflowId]);
@@ -33,8 +34,11 @@ export default function WorkflowDetailPage() {
     try {
       setLoading(true);
       const data = await workflowService.getWorkflowById(workflowId);
+      console.log('Workflow loaded:', data);
+      console.log('Number of nodes:', data.nodes?.length || 0);
       setWorkflow(data);
-      setIsRegistered(data.nodes && data.nodes.length > 0);
+      // Only set as registered if workflow status indicates it
+      setIsRegistered(data.status === 'REGISTERED' || data.status === 'ACTIVE');
     } catch (error) {
       console.error('Error loading workflow:', error);
     } finally {
@@ -43,14 +47,35 @@ export default function WorkflowDetailPage() {
   };
 
   const handleRegister = async () => {
+    // Reload workflow data first to ensure we have latest data
     try {
       setRegistering(true);
+      const latestWorkflow = await workflowService.getWorkflowById(workflowId);
+      setWorkflow(latestWorkflow);
+      
+      // Check if workflow has tasks
+      if (!latestWorkflow.nodes || latestWorkflow.nodes.length === 0) {
+        alert('Please configure tasks before registering the workflow. Redirecting to task editor...');
+        router.push(`/workflows/${workflowId}/edit`);
+        setRegistering(false);
+        return;
+      }
+      
       await workflowService.registerWorkflow(workflowId);
       alert('Workflow registered with Conductor successfully!');
       setIsRegistered(true);
-    } catch (error) {
+      
+      // Reload to get updated status from backend
+      await loadWorkflow();
+    } catch (error: any) {
       console.error('Error registering workflow:', error);
-      alert('Failed to register workflow');
+      const errorMsg = error.message || 'Failed to register workflow';
+      alert(errorMsg);
+      
+      // If error mentions tasks, redirect to edit page
+      if (errorMsg.toLowerCase().includes('task')) {
+        setTimeout(() => router.push(`/workflows/${workflowId}/edit`), 2000);
+      }
     } finally {
       setRegistering(false);
     }
@@ -104,6 +129,13 @@ export default function WorkflowDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => loadWorkflow()}
+              className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded border border-blue-300"
+              title="Refresh workflow data"
+            >
+              ↻ Refresh
+            </button>
             <span className="text-sm text-gray-600">v{workflow.version || '1.0'}</span>
             {isRegistered ? (
               <span className="flex items-center gap-1 text-sm text-green-600">

@@ -84,17 +84,16 @@ public class ConductorWorkflowBuilder {
      */
     private String generateWorkflowName(WorkflowDefinition workflow) {
         // Conductor workflow names should be lowercase with underscores
-        String baseName = workflow.getName()
+        String workflowName = workflow.getName()
                 .toLowerCase()
                 .replaceAll("\\s+", "_")
                 .replaceAll("[^a-z0-9_]", "");
         
-        // Include project ID to ensure uniqueness across projects
-        if (workflow.getProjectId() != null) {
-            baseName = workflow.getProjectId().toLowerCase() + "_" + baseName;
-        }
+        // Always include project prefix to ensure uniqueness
+        String projectPrefix = (workflow.getProjectId() != null && !workflow.getProjectId().isEmpty()) 
+            ? workflow.getProjectId() : "default";
         
-        return baseName;
+        return projectPrefix + "_" + workflowName;
     }
     
     /**

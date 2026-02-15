@@ -8,6 +8,7 @@ import com.enit.satellite_platform.modules.workflow.services.WorkflowDefinitionS
 import com.enit.satellite_platform.modules.workflow.services.WorkflowExecutionService;
 import com.netflix.conductor.common.metadata.workflow.WorkflowDef;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,6 +21,7 @@ import java.util.Map;
 /**
  * REST Controller for Workflow Definition management
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/workflows")
 @RequiredArgsConstructor
@@ -112,37 +114,57 @@ public class WorkflowController {
      */
     @PostMapping("/{id}/register")
     public ResponseEntity<Map<String, String>> registerWorkflowWithConductor(@PathVariable String id) {
-        WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
-        
-        // Convert response back to entity for registration (simple mapping)
-        com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition workflowEntity = 
-                new com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition();
-        workflowEntity.setId(workflow.getId());
-        workflowEntity.setName(workflow.getName());
-        workflowEntity.setDescription(workflow.getDescription());
-        workflowEntity.setProjectId(workflow.getProjectId());
-        workflowEntity.setVersion(workflow.getVersion());
-        workflowEntity.setStatus(workflow.getStatus());
-        workflowEntity.setCreatedBy(workflow.getCreatedBy());
-        workflowEntity.setCreatedAt(workflow.getCreatedAt());
-        workflowEntity.setUpdatedAt(workflow.getUpdatedAt());
-        workflowEntity.setNodes(workflow.getNodes());
-        workflowEntity.setEdges(workflow.getEdges());
-        
-        com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata metadata = 
-                new com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata();
-        metadata.setTimeoutSeconds(workflow.getTimeoutSeconds());
-        metadata.setTags(workflow.getTags());
-        workflowEntity.setMetadata(metadata);
-        
-        conductorRegistrationService.registerWorkflow(workflowEntity);
-        
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Workflow registered successfully with Conductor");
-        response.put("workflowId", id);
-        response.put("status", "registered");
-        
-        return ResponseEntity.ok(response);
+        try {
+            WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
+            
+            // Validate workflow has tasks configured
+            if (workflow.getNodes() == null || workflow.getNodes().isEmpty()) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Cannot register workflow without tasks. Please configure tasks first.");
+                return ResponseEntity.status(400).body(errorResponse);
+            }
+            
+            // Convert response back to entity for registration (simple mapping)
+            com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition workflowEntity = 
+                    new com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition();
+            workflowEntity.setId(workflow.getId());
+            workflowEntity.setName(workflow.getName());
+            workflowEntity.setDescription(workflow.getDescription());
+            workflowEntity.setProjectId(workflow.getProjectId());
+            workflowEntity.setVersion(workflow.getVersion());
+            workflowEntity.setStatus(workflow.getStatus());
+            workflowEntity.setCreatedBy(workflow.getCreatedBy());
+            workflowEntity.setCreatedAt(workflow.getCreatedAt());
+            workflowEntity.setUpdatedAt(workflow.getUpdatedAt());
+            workflowEntity.setNodes(workflow.getNodes());
+            workflowEntity.setEdges(workflow.getEdges());
+            
+            com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata metadata = 
+                    new com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata();
+            metadata.setTimeoutSeconds(workflow.getTimeoutSeconds());
+            metadata.setTags(workflow.getTags());
+            workflowEntity.setMetadata(metadata);
+            
+            // Register with Conductor
+            conductorRegistrationService.registerWorkflow(workflowEntity);
+            
+            // Update workflow status to REGISTERED
+            UpdateWorkflowRequest statusUpdate = new UpdateWorkflowRequest();
+            statusUpdate.setStatus("REGISTERED");
+            workflowDefinitionService.updateWorkflow(id, statusUpdate);
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Workflow registered successfully with Conductor");
+            response.put("workflowId", id);
+            response.put("status", "registered");
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to register workflow with Conductor: {}", e.getMessage(), e);
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
     }
     
     /**
@@ -172,33 +194,44 @@ public class WorkflowController {
             @PathVariable String id,
             @RequestBody(required = false) Map<String, Object> input,
             Authentication authentication) {
-        WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
-        String userId = getUserId(authentication);
-        
-        String conductorWorkflowName = workflow.getProjectId() + "_" + 
-                workflow.getName().toLowerCase().replaceAll("\\s+", "_").replaceAll("[^a-z0-9_]", "");
-        
-        // Default input if not provided
-        if (input == null) {
-            input = new HashMap<>();
+        try {
+            WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
+            String userId = getUserId(authentication);
+            
+            // Generate Conductor workflow name
+            String projectPrefix = (workflow.getProjectId() != null && !workflow.getProjectId().isEmpty()) 
+                ? workflow.getProjectId() : "default";
+            String conductorWorkflowName = projectPrefix + "_" + 
+                    workflow.getName().toLowerCase().replaceAll("\\s+", "_").replaceAll("[^a-z0-9_]", "");
+            
+            log.info("Executing workflow: {} as Conductor workflow: {}", id, conductorWorkflowName);
+            
+            // Default input if not provided
+            if (input == null) {
+                input = new HashMap<>();
+            }
+            
+            String workflowId = workflowExecutionService.startWorkflow(
+                conductorWorkflowName, 
+                1, 
+                input,
+                id,  // workflowDefinitionId
+                workflow.getProjectId(),
+                userId
+            );
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("workflowId", workflowId);
+            response.put("conductorWorkflowName", conductorWorkflowName);
+            response.put("status", "started");
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to execute workflow: {}", e.getMessage(), e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
         }
-        
-        String workflowId = workflowExecutionService.startWorkflow(
-            conductorWorkflowName, 
-            1, 
-            input,
-            id,  // workflowDefinitionId
-            workflow.getProjectId(),
-            userId
-        );
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("workflowId", workflowId);
-        response.put("conductorWorkflowName", conductorWorkflowName);
-        response.put("status", "started");
-        response.put("message", "Workflow execution started successfully");
-        
-        return ResponseEntity.ok(response);
     }
     
     /**

@@ -70,9 +70,12 @@ export const workflowService = {
 
   async executeWorkflow(id: string, parameters?: Record<string, any>): Promise<{ message: string; workflowId: string }> {
     const response = await fetch(`${WORKFLOW_API}/${id}/execute`, 
-      getFetchOptions('POST', { parameters: parameters || {} })
+      getFetchOptions('POST', parameters || {})
     );
-    if (!response.ok) throw new Error('Failed to execute workflow');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to execute workflow');
+    }
     return response.json();
   },
 
@@ -188,7 +191,10 @@ export const workflowService = {
     const response = await fetch(`${WORKFLOW_API}/${workflowId}/register`, 
       getFetchOptions('POST')
     );
-    if (!response.ok) throw new Error('Failed to register workflow');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to register workflow');
+    }
     return response.json();
   }
 };
