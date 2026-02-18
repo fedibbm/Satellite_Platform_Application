@@ -26,12 +26,12 @@ import java.util.Map;
 @RequestMapping("/api/workflows")
 @RequiredArgsConstructor
 public class WorkflowController {
-    
+
     private final WorkflowDefinitionService workflowDefinitionService;
     private final ConductorRegistrationService conductorRegistrationService;
     private final WorkflowExecutionService workflowExecutionService;
     private final ExecutionHistoryService executionHistoryService;
-    
+
     /**
      * Create a new workflow
      */
@@ -43,7 +43,7 @@ public class WorkflowController {
         WorkflowResponse response = workflowDefinitionService.createWorkflow(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-    
+
     /**
      * Get all workflows
      */
@@ -52,7 +52,7 @@ public class WorkflowController {
         List<WorkflowResponse> workflows = workflowDefinitionService.getAllWorkflows();
         return ResponseEntity.ok(workflows);
     }
-    
+
     /**
      * Get workflow by ID
      */
@@ -61,7 +61,7 @@ public class WorkflowController {
         WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
         return ResponseEntity.ok(workflow);
     }
-    
+
     /**
      * Get workflows by project ID
      */
@@ -70,7 +70,7 @@ public class WorkflowController {
         List<WorkflowResponse> workflows = workflowDefinitionService.getWorkflowsByProject(projectId);
         return ResponseEntity.ok(workflows);
     }
-    
+
     /**
      * Get workflows by status
      */
@@ -79,7 +79,7 @@ public class WorkflowController {
         List<WorkflowResponse> workflows = workflowDefinitionService.getWorkflowsByStatus(status);
         return ResponseEntity.ok(workflows);
     }
-    
+
     /**
      * Get workflow templates
      */
@@ -88,7 +88,7 @@ public class WorkflowController {
         List<WorkflowResponse> templates = workflowDefinitionService.getWorkflowTemplates();
         return ResponseEntity.ok(templates);
     }
-    
+
     /**
      * Update workflow
      */
@@ -99,7 +99,7 @@ public class WorkflowController {
         WorkflowResponse workflow = workflowDefinitionService.updateWorkflow(id, request);
         return ResponseEntity.ok(workflow);
     }
-    
+
     /**
      * Delete workflow
      */
@@ -108,7 +108,7 @@ public class WorkflowController {
         workflowDefinitionService.deleteWorkflow(id);
         return ResponseEntity.noContent().build();
     }
-    
+
     /**
      * Publish workflow
      */
@@ -117,25 +117,31 @@ public class WorkflowController {
         WorkflowResponse workflow = workflowDefinitionService.publishWorkflow(id);
         return ResponseEntity.ok(workflow);
     }
-    
+
     /**
      * Register workflow with Conductor
      */
     @PostMapping("/{id}/register")
     public ResponseEntity<Map<String, String>> registerWorkflowWithConductor(@PathVariable String id) {
         try {
-            WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
+            // Prevent registering templates
+            if (id != null && id.startsWith("template_")) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Cannot register template workflows. Please create a new workflow from this template first.");
+                return ResponseEntity.status(400).body(errorResponse);
+            }
             
+            WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
+
             // Validate workflow has tasks configured
             if (workflow.getNodes() == null || workflow.getNodes().isEmpty()) {
                 Map<String, String> errorResponse = new HashMap<>();
                 errorResponse.put("error", "Cannot register workflow without tasks. Please configure tasks first.");
                 return ResponseEntity.status(400).body(errorResponse);
             }
-            
+
             // Convert response back to entity for registration (simple mapping)
-            com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition workflowEntity = 
-                    new com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition();
+            com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition workflowEntity = new com.enit.satellite_platform.modules.workflow.entities.WorkflowDefinition();
             workflowEntity.setId(workflow.getId());
             workflowEntity.setName(workflow.getName());
             workflowEntity.setDescription(workflow.getDescription());
@@ -147,26 +153,25 @@ public class WorkflowController {
             workflowEntity.setUpdatedAt(workflow.getUpdatedAt());
             workflowEntity.setNodes(workflow.getNodes());
             workflowEntity.setEdges(workflow.getEdges());
-            
-            com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata metadata = 
-                    new com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata();
+
+            com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata metadata = new com.enit.satellite_platform.modules.workflow.entities.WorkflowMetadata();
             metadata.setTimeoutSeconds(workflow.getTimeoutSeconds());
             metadata.setTags(workflow.getTags());
             workflowEntity.setMetadata(metadata);
-            
+
             // Register with Conductor
             conductorRegistrationService.registerWorkflow(workflowEntity);
-            
+
             // Update workflow status to REGISTERED
             UpdateWorkflowRequest statusUpdate = new UpdateWorkflowRequest();
             statusUpdate.setStatus("REGISTERED");
             workflowDefinitionService.updateWorkflow(id, statusUpdate);
-            
+
             Map<String, String> response = new HashMap<>();
             response.put("message", "Workflow registered successfully with Conductor");
             response.put("workflowId", id);
             response.put("status", "registered");
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Failed to register workflow with Conductor: {}", e.getMessage(), e);
@@ -175,26 +180,26 @@ public class WorkflowController {
             return ResponseEntity.status(500).body(errorResponse);
         }
     }
-    
+
     /**
      * Get Conductor workflow definition
      */
     @GetMapping("/{id}/conductor-def")
     public ResponseEntity<WorkflowDef> getConductorWorkflowDef(@PathVariable String id) {
         WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
-        
-        String conductorWorkflowName = workflow.getProjectId() + "_" + 
+
+        String conductorWorkflowName = workflow.getProjectId() + "_" +
                 workflow.getName().toLowerCase().replaceAll("\\s+", "_").replaceAll("[^a-z0-9_]", "");
-        
+
         WorkflowDef conductorDef = conductorRegistrationService.getWorkflowDef(conductorWorkflowName, null);
-        
+
         if (conductorDef == null) {
             return ResponseEntity.notFound().build();
         }
-        
+
         return ResponseEntity.ok(conductorDef);
     }
-    
+
     /**
      * Execute/start a workflow
      */
@@ -206,34 +211,34 @@ public class WorkflowController {
         try {
             WorkflowResponse workflow = workflowDefinitionService.getWorkflowById(id);
             String userId = getUserId(authentication);
-            
+
             // Generate Conductor workflow name
-            String projectPrefix = (workflow.getProjectId() != null && !workflow.getProjectId().isEmpty()) 
-                ? workflow.getProjectId() : "default";
-            String conductorWorkflowName = projectPrefix + "_" + 
+            String projectPrefix = (workflow.getProjectId() != null && !workflow.getProjectId().isEmpty())
+                    ? workflow.getProjectId()
+                    : "default";
+            String conductorWorkflowName = projectPrefix + "_" +
                     workflow.getName().toLowerCase().replaceAll("\\s+", "_").replaceAll("[^a-z0-9_]", "");
-            
+
             log.info("Executing workflow: {} as Conductor workflow: {}", id, conductorWorkflowName);
-            
+
             // Default input if not provided
             if (input == null) {
                 input = new HashMap<>();
             }
-            
+
             String workflowId = workflowExecutionService.startWorkflow(
-                conductorWorkflowName, 
-                1, 
-                input,
-                id,  // workflowDefinitionId
-                workflow.getProjectId(),
-                userId
-            );
-            
+                    conductorWorkflowName,
+                    1,
+                    input,
+                    id, // workflowDefinitionId
+                    workflow.getProjectId(),
+                    userId);
+
             Map<String, Object> response = new HashMap<>();
             response.put("workflowId", workflowId);
             response.put("conductorWorkflowName", conductorWorkflowName);
             response.put("status", "started");
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Failed to execute workflow: {}", e.getMessage(), e);
@@ -242,7 +247,7 @@ public class WorkflowController {
             return ResponseEntity.status(500).body(errorResponse);
         }
     }
-    
+
     /**
      * Get workflow execution status
      */
@@ -251,7 +256,7 @@ public class WorkflowController {
         Map<String, Object> status = workflowExecutionService.getWorkflowStatus(workflowId);
         return ResponseEntity.ok(status);
     }
-    
+
     /**
      * Get workflow execution details with tasks
      */
@@ -260,7 +265,7 @@ public class WorkflowController {
         Map<String, Object> details = workflowExecutionService.getWorkflowDetails(workflowId);
         return ResponseEntity.ok(details);
     }
-    
+
     /**
      * Terminate a workflow execution
      */
@@ -270,64 +275,64 @@ public class WorkflowController {
             @RequestBody(required = false) Map<String, String> body) {
         String reason = body != null ? body.get("reason") : "Terminated by user";
         workflowExecutionService.terminateWorkflow(workflowId, reason);
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("workflowId", workflowId);
         response.put("status", "terminated");
         response.put("message", "Workflow terminated successfully");
-        
+
         return ResponseEntity.ok(response);
     }
-    
+
     /**
      * Pause a workflow execution
      */
     @PostMapping("/execution/{workflowId}/pause")
     public ResponseEntity<Map<String, String>> pauseExecution(@PathVariable String workflowId) {
         workflowExecutionService.pauseWorkflow(workflowId);
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("workflowId", workflowId);
         response.put("status", "paused");
         response.put("message", "Workflow paused successfully");
-        
+
         return ResponseEntity.ok(response);
     }
-    
+
     /**
      * Resume a paused workflow execution
      */
     @PostMapping("/execution/{workflowId}/resume")
     public ResponseEntity<Map<String, String>> resumeExecution(@PathVariable String workflowId) {
         workflowExecutionService.resumeWorkflow(workflowId);
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("workflowId", workflowId);
         response.put("status", "resumed");
         response.put("message", "Workflow resumed successfully");
-        
+
         return ResponseEntity.ok(response);
     }
-    
+
     /**
      * Restart a workflow execution
      */
     @PostMapping("/execution/{workflowId}/restart")
     public ResponseEntity<Map<String, String>> restartExecution(@PathVariable String workflowId) {
         workflowExecutionService.restartWorkflow(workflowId);
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("workflowId", workflowId);
         response.put("status", "restarted");
         response.put("message", "Workflow restarted successfully");
-        
+
         return ResponseEntity.ok(response);
     }
-    
+
     // ============================================
     // EXECUTION HISTORY ENDPOINTS (Phase 5)
     // ============================================
-    
+
     /**
      * Get execution history for a specific workflow definition
      */
@@ -336,19 +341,19 @@ public class WorkflowController {
             @PathVariable String id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        
+
         var executions = executionHistoryService.getByWorkflowDefinitionId(id, page, size);
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("content", executions.getContent());
         response.put("totalElements", executions.getTotalElements());
         response.put("totalPages", executions.getTotalPages());
         response.put("currentPage", page);
         response.put("size", size);
-        
+
         return ResponseEntity.ok(response);
     }
-    
+
     /**
      * Get execution history by project
      */
@@ -357,19 +362,19 @@ public class WorkflowController {
             @PathVariable String projectId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        
+
         var executions = executionHistoryService.getByProjectId(projectId, page, size);
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("content", executions.getContent());
         response.put("totalElements", executions.getTotalElements());
         response.put("totalPages", executions.getTotalPages());
         response.put("currentPage", page);
         response.put("size", size);
-        
+
         return ResponseEntity.ok(response);
     }
-    
+
     /**
      * Get execution history by status
      */
@@ -378,22 +383,22 @@ public class WorkflowController {
             @PathVariable String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        
-        ExecutionHistory.ExecutionStatus executionStatus = 
-            ExecutionHistory.ExecutionStatus.valueOf(status.toUpperCase());
-        
+
+        ExecutionHistory.ExecutionStatus executionStatus = ExecutionHistory.ExecutionStatus
+                .valueOf(status.toUpperCase());
+
         var executions = executionHistoryService.getByStatus(executionStatus, page, size);
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("content", executions.getContent());
         response.put("totalElements", executions.getTotalElements());
         response.put("totalPages", executions.getTotalPages());
         response.put("currentPage", page);
         response.put("size", size);
-        
+
         return ResponseEntity.ok(response);
     }
-    
+
     /**
      * Get execution statistics
      */
@@ -403,17 +408,17 @@ public class WorkflowController {
         Map<String, Object> stats = executionHistoryService.getExecutionStatistics(projectId);
         return ResponseEntity.ok(stats);
     }
-    
+
     /**
      * Get specific execution history
      */
     @GetMapping("/execution/{workflowId}/history")
     public ResponseEntity<ExecutionHistory> getExecutionHistory(@PathVariable String workflowId) {
         return executionHistoryService.getByWorkflowExecutionId(workflowId)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
-    
+
     /**
      * Get recent executions
      */
@@ -422,7 +427,7 @@ public class WorkflowController {
         List<ExecutionHistory> executions = executionHistoryService.getRecentExecutions(10);
         return ResponseEntity.ok(executions);
     }
-    
+
     /**
      * Extract user ID from authentication
      */

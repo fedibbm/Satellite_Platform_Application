@@ -26,7 +26,10 @@ import org.springframework.scheduling.annotation.SchedulingConfigurer;
  * application. It uses Spring Boot's auto-configuration feature but excludes the DataSourceAutoConfiguration
  * since the application uses MongoDB. Auditing and asynchronous method execution are also enabled.
  */
-@SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
+@SpringBootApplication(
+    exclude = {DataSourceAutoConfiguration.class},
+    scanBasePackages = "com.enit.satellite_platform"
+)
 @EnableConfigurationProperties(com.enit.satellite_platform.config.cache_handler.CacheProperties.class)
 @EnableMongoAuditing
 @EnableAsync

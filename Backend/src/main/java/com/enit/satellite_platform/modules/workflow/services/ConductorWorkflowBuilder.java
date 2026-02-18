@@ -57,9 +57,17 @@ public class ConductorWorkflowBuilder {
         // Set workflow input parameters
         workflowDef.setInputParameters(new ArrayList<>(Arrays.asList("imageId", "userId", "projectId")));
         
-        // Set workflow output parameters
+        // Set workflow output parameters - reference the last task's output
         Map<String, Object> outputParams = new HashMap<>();
-        outputParams.put("result", "${workflow.output}");
+        if (!orderedTasks.isEmpty()) {
+            WorkflowTask lastTask = orderedTasks.get(orderedTasks.size() - 1);
+            String lastTaskRef = lastTask.getTaskReferenceName();
+            outputParams.put("workflowResult", "${" + lastTaskRef + ".output}");
+            outputParams.put("status", "${" + lastTaskRef + ".output.status}");
+            outputParams.put("message", "${" + lastTaskRef + ".output.message}");
+        } else {
+            outputParams.put("result", "${workflow.output}");
+        }
         workflowDef.setOutputParameters(outputParams);
         
         // Set schema version

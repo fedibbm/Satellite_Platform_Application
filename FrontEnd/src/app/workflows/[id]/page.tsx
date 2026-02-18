@@ -22,6 +22,13 @@ export default function WorkflowDetailPage() {
   const [activeTab, setActiveTab] = useState<'details' | 'executions'>('details');
   const [registering, setRegistering] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [showExecuteDialog, setShowExecuteDialog] = useState(false);
+  const [executionParams, setExecutionParams] = useState<Record<string, any>>({
+    imageId: 'LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318',
+    region: '{"type":"Polygon","coordinates":[[[-122.5,37.5],[-122.5,37.8],[-122.2,37.8],[-122.2,37.5],[-122.5,37.5]]]}',
+    projectId: 'test-project-1',
+    userId: 'user123'
+  });
 
   useEffect(() => {
     if (workflowId) {
@@ -86,8 +93,13 @@ export default function WorkflowDetailPage() {
       alert('Please register the workflow with Conductor first');
       return;
     }
+    setShowExecuteDialog(true);
+  };
+
+  const handleConfirmExecute = async () => {
     try {
-      const result = await workflowService.executeWorkflow(workflowId);
+      const result = await workflowService.executeWorkflow(workflowId, executionParams);
+      setShowExecuteDialog(false);
       router.push(`/workflows/executions/${result.workflowId}`);
     } catch (error) {
       console.error('Error executing workflow:', error);
@@ -304,6 +316,77 @@ export default function WorkflowDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Execute Dialog */}
+      {showExecuteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Execute Workflow</h3>
+            <p className="text-sm text-gray-600 mb-4">Provide input parameters for this workflow execution:</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Image ID</label>
+                <input
+                  type="text"
+                  value={executionParams.imageId || ''}
+                  onChange={(e) => setExecutionParams({...executionParams, imageId: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Region (GeoJSON)</label>
+                <textarea
+                  value={executionParams.region || ''}
+                  onChange={(e) => setExecutionParams({...executionParams, region: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  rows={3}
+                  placeholder='{"type":"Polygon","coordinates":[[[-122.5,37.5],[-122.5,37.8],[-122.2,37.8],[-122.2,37.5],[-122.5,37.5]]]}'
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Project ID</label>
+                <input
+                  type="text"
+                  value={executionParams.projectId || ''}
+                  onChange={(e) => setExecutionParams({...executionParams, projectId: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="test-project-1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                <input
+                  type="text"
+                  value={executionParams.userId || ''}
+                  onChange={(e) => setExecutionParams({...executionParams, userId: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="user123"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowExecuteDialog(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmExecute}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Execute
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

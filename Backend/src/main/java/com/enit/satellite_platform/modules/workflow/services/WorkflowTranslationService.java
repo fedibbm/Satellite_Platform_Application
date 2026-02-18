@@ -32,6 +32,9 @@ public class WorkflowTranslationService {
         NodeConfiguration config = node.getConfiguration();
         if (config != null && config.getTaskName() != null) {
             task.setName(config.getTaskName());
+        } else if (node.getTaskReferenceName() != null) {
+            // Use taskReferenceName as the task name if config.taskName is not set
+            task.setName(node.getTaskReferenceName());
         } else {
             task.setName(node.getName().toLowerCase().replaceAll("\\s+", "_"));
         }

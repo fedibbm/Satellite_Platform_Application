@@ -23,6 +23,10 @@ interface Task {
 }
 
 const TASK_TYPES = [
+  { value: 'TRIGGER', label: '⚡ Workflow Trigger', description: 'Start workflow execution' },
+  { value: 'LOAD_IMAGE', label: '🛰️ Load Satellite Image', description: 'Fetch from Google Earth Engine' },
+  { value: 'NDVI', label: '🌿 Calculate NDVI', description: 'Vegetation index processing' },
+  { value: 'STORAGE', label: '💾 Store Results', description: 'Save to database/storage' },
   { value: 'SIMPLE', label: 'Simple Task', description: 'Basic task executed by a worker' },
   { value: 'HTTP', label: 'HTTP Request', description: 'Make HTTP API calls' },
   { value: 'WAIT', label: 'Wait/Delay', description: 'Pause workflow for specified time' },
@@ -33,9 +37,51 @@ const TASK_TYPES = [
 ];
 
 const TASK_TEMPLATES = {
+  TRIGGER: {
+    name: 'Workflow Trigger',
+    description: 'Start workflow execution',
+    taskReferenceName: 'workflow_trigger',
+    inputParameters: {
+      workflowId: '${workflow.input.workflowId}',
+      projectId: '${workflow.input.projectId}'
+    }
+  },
+  LOAD_IMAGE: {
+    name: 'Load Satellite Image',
+    description: 'Fetch satellite image from Google Earth Engine',
+    taskReferenceName: 'load_image',
+    inputParameters: {
+      imageId: '${workflow.input.imageId}',
+      region: '${workflow.input.region}',
+      projectId: '${workflow.input.projectId}'
+    }
+  },
+  NDVI: {
+    name: 'Calculate NDVI',
+    description: 'Calculate Normalized Difference Vegetation Index',
+    taskReferenceName: 'calculate_ndvi',
+    inputParameters: {
+      imageId: '${load_image.output.imageId}',
+      imageData: '${load_image.output.imageData}',
+      redBand: 'B4',
+      nirBand: 'B8'
+    }
+  },
+  STORAGE: {
+    name: 'Store Results',
+    description: 'Save processed results to storage',
+    taskReferenceName: 'save_results',
+    inputParameters: {
+      workflowId: '${workflow.workflowId}',
+      projectId: '${workflow.input.projectId}',
+      userId: '${workflow.input.userId}',
+      results: '${calculate_ndvi.output}'
+    }
+  },
   SIMPLE: {
     name: 'Simple Task',
     description: 'A basic task that will be executed by a worker',
+    taskReferenceName: 'simple_task',
     inputParameters: {
       message: 'Hello from workflow',
       workerId: 'my-worker'
@@ -44,6 +90,7 @@ const TASK_TEMPLATES = {
   HTTP: {
     name: 'HTTP Request',
     description: 'Make an HTTP API call',
+    taskReferenceName: 'http_request',
     inputParameters: {
       uri: 'http://localhost:9090/api/example',
       method: 'GET',
@@ -55,6 +102,7 @@ const TASK_TEMPLATES = {
   WAIT: {
     name: 'Wait Task',
     description: 'Wait for a specified duration',
+    taskReferenceName: 'wait_task',
     inputParameters: {
       duration: '5s'
     }
@@ -62,6 +110,7 @@ const TASK_TEMPLATES = {
   INLINE: {
     name: 'Inline Script',
     description: 'Execute JavaScript code',
+    taskReferenceName: 'inline_script',
     inputParameters: {
       expression: 'function() { return {"result": "success"}; }',
       evaluatorType: 'javascript'
@@ -122,7 +171,7 @@ export default function EditWorkflowPage() {
       name: template?.name || `Task ${taskNumber}`,
       type: type,
       description: template?.description || '',
-      taskReferenceName: `task_${taskNumber}`,
+      taskReferenceName: template?.taskReferenceName || `task_${taskNumber}`,
       inputParameters: template?.inputParameters || {}
     };
     
