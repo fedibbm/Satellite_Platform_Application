@@ -81,6 +81,15 @@ public class WorkflowController {
     }
     
     /**
+     * Get workflow templates
+     */
+    @GetMapping("/templates")
+    public ResponseEntity<List<WorkflowResponse>> getWorkflowTemplates() {
+        List<WorkflowResponse> templates = workflowDefinitionService.getWorkflowTemplates();
+        return ResponseEntity.ok(templates);
+    }
+    
+    /**
      * Update workflow
      */
     @PutMapping("/{id}")

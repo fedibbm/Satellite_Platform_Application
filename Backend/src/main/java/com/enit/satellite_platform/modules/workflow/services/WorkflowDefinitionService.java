@@ -98,6 +98,15 @@ public class WorkflowDefinitionService {
     }
     
     /**
+     * Get workflow templates (workflows marked as templates)
+     */
+    public List<WorkflowResponse> getWorkflowTemplates() {
+        // For now, return an empty list since we don't have a template field in the entity
+        // You can add a 'isTemplate' field to WorkflowDefinition later if needed
+        return List.of();
+    }
+    
+    /**
      * Update workflow
      */
     public WorkflowResponse updateWorkflow(String id, UpdateWorkflowRequest request) {
