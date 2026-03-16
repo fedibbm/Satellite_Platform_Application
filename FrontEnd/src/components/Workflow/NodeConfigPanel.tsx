@@ -19,7 +19,28 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
     if (node) {
       setLabel(node.data.label || '');
       setDescription(node.data.description || '');
-      setConfig(node.data.config || {});
+      
+      // Auto-initialize default configurations for node types if they don't exist
+      let defaultConfig = {};
+      switch (node.type) {
+        case 'trigger':
+          defaultConfig = { triggerType: 'manual' };
+          break;
+        case 'data-input':
+          defaultConfig = { dataSource: 'gee', serviceType: 'get_images' };
+          break;
+        case 'processing':
+          defaultConfig = { processingType: 'ndvi', inputSource: 'previous', outputFormat: 'geotiff', soilBrightness: '0.5' };
+          break;
+        case 'decision':
+          defaultConfig = { conditionType: 'comparison', operator: '>', checkType: 'hasData' };
+          break;
+        case 'output':
+          defaultConfig = { outputType: 'store' };
+          break;
+      }
+      
+      setConfig({ ...defaultConfig, ...(node.data.config || {}) });
     }
   }, [node]);
 
@@ -105,8 +126,8 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
                     onChange={(e) => updateConfig('serviceType', e.target.value)}
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   >
-                    <option value="get_images">Get Images</option>
-                    <option value="get_image_collection">Get Image Collection</option>
+                    <option value="get_images">Get Images (metadata)</option>
+                    <option value="ndvi">NDVI Analysis</option>
                   </select>
                 </div>
 

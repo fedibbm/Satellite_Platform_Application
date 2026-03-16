@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { workflowService } from '@/services/workflow.service';
 import { Workflow, WorkflowNode, WorkflowEdge } from '@/types/workflow';
+import { wsService } from '@/services/websocketService';
 import WorkflowCanvas from '@/components/Workflow/WorkflowCanvas';
 import NodePalette from '@/components/Workflow/NodePalette';
 import NodeConfigPanel from '@/components/Workflow/NodeConfigPanel';
@@ -26,6 +27,55 @@ export default function WorkflowDetailPage() {
   const [nodes, setNodes] = useState<WorkflowNode[]>([]);
   const [edges, setEdges] = useState<WorkflowEdge[]>([]);
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
+
+  const subscriptionRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Reconnect to ws if needed
+    if (!wsService.isConnected) {
+      wsService.connect();
+    }
+    
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+      }
+    };
+  }, []);
+
+  const subscribeToExecution = (executionId: string) => {
+    if (subscriptionRef.current) {
+       subscriptionRef.current.unsubscribe();
+    }
+    
+    console.log(`[Workflow Debug] Subscribing to execution events for ID: ${executionId}`);
+    // Slight delay to ensure connection is ready
+    setTimeout(() => {
+        subscriptionRef.current = wsService.subscribeToTopic(`/topic/workflow.execution.${executionId}`, (message) => {
+           console.log(`[Workflow WebSocket Update] Status: ${message.status}`, message);
+           
+           if (message.status === 'NODE_START') {
+               console.log(`➡️ [Executor] Node Started: ${message.data?.nodeId}`);
+           } else if (message.status === 'NODE_COMPLETE') {
+               console.log(`✅ [Executor] Node Completed: ${message.data?.nodeId}. Result payload attached.`);
+           } else if (message.status === 'NODE_FAILED') {
+               console.error(`❌ [Executor] Node Failed: ${message.data?.nodeId}`, message.error || message.data);
+           } else if (message.status === 'FAILED') {
+               console.error(`🚨 [Executor] Workflow Execution FAILED:`, message.error || message);
+           } else if (message.status === 'COMPLETED') {
+               console.log(`🎉 [Executor] Workflow Execution COMPLETED Successfully:`, message);
+           }
+
+           // Force reload of workflow to fetch updated execution status/nodes
+           loadWorkflow(); 
+           
+           if (message.status === 'COMPLETED' || message.status === 'FAILED') {
+               alert(`Workflow execution ${message.status}`);
+           }
+        });
+    }, 1000);
+  };
+
 
   useEffect(() => {
     if (workflowId) {
@@ -106,9 +156,23 @@ export default function WorkflowDetailPage() {
 
   const handleExecute = async () => {
     try {
-      await workflowService.executeWorkflow(workflowId);
-      alert('Workflow execution started!');
+      console.log(`[Workflow Debug] Triggering execution for Workflow ID: ${workflowId}...`);
+      const execResp = await workflowService.executeWorkflow(workflowId);
+      console.log(`[Workflow Debug] Execution Trigger Response API:`, execResp);
+      
+      alert('Workflow execution started! (Listening for real-time updates)');
       loadWorkflow(); // Reload to show new execution
+      
+      // Attempt to subscribe using returned execution ID if available
+      if (execResp && execResp.data && execResp.data.id) {
+          console.log(`[Workflow Debug] Hooking WebSocket onto execution payload ID: ${execResp.data.id}`);
+          subscribeToExecution(execResp.data.id);
+      } else if (execResp && execResp.id) {
+          console.log(`[Workflow Debug] Hooking WebSocket onto execution payload ID: ${execResp.id}`);
+          subscribeToExecution(execResp.id);
+      } else {
+          console.warn(`[Workflow Debug] Could not parse Execution ID from response to hook STOMP. Response was:`, execResp);
+      }
     } catch (error) {
       console.error('Error executing workflow:', error);
       alert('Failed to execute workflow');
@@ -155,6 +219,12 @@ export default function WorkflowDetailPage() {
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
             >
               Save
+            </button>
+            <button
+              onClick={() => console.log('Workflow Configuration:', { workflow, nodes, edges })}
+              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+            >
+              Log Config
             </button>
             <button
               onClick={handleExecute}
@@ -262,16 +332,16 @@ export default function WorkflowDetailPage() {
                       <span className="font-semibold">Execution {execution.id}</span>
                       <span
                         className={`px-2 py-1 text-xs rounded ${
-                          execution.status === 'completed'
+                          execution.status === 'COMPLETED'
                             ? 'bg-green-100 text-green-700'
-                            : execution.status === 'failed'
+                            : execution.status === 'FAILED'
                             ? 'bg-red-100 text-red-700'
-                            : execution.status === 'running'
+                            : execution.status === 'RUNNING'
                             ? 'bg-blue-100 text-blue-700'
                             : 'bg-gray-100 text-gray-700'
                         }`}
                       >
-                        {execution.status}
+                        {execution.status.toLowerCase()}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600">Version: {execution.version}</p>

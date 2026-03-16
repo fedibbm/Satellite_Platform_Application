@@ -40,7 +40,7 @@ export interface WorkflowExecution {
   id: string;
   workflowId: string;
   version: string;
-  status: 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   startedAt: string;
   completedAt?: string;
   triggeredBy: string;
@@ -51,7 +51,7 @@ export interface WorkflowExecution {
 export interface WorkflowLog {
   timestamp: string;
   nodeId: string;
-  level: 'info' | 'warning' | 'error';
+  level: 'INFO' | 'WARNING' | 'ERROR';
   message: string;
 }
 

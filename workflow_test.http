@@ -1,0 +1,140 @@
+@baseUrl = http://localhost:8080
+@token = eyJhbGciOiJIUzUxMiJ9.eyJuYW1lIjoiYWRtaW4iLCJlbWFpbCI6ImFkbWluQHNhdGVsbGl0ZS5jb20iLCJyb2xlcyI6WyJST0xFX0FETUlOIl0sInN1YiI6ImFkbWluQHNhdGVsbGl0ZS5jb20iLCJpYXQiOjE3NzI5NzY0NDYsImV4cCI6MTc3MzA2Mjg0Nn0.g5mUwNgrH2KR7XFJX-ixCDuh7UW9qaOGNjEwWNuA7DUGlZSIh3NtV5nbKiY7eOS2BJ-rDFHe6dATnRJWVDRPTw; refreshToken=c4240131-91b5-4dd5-b74a-905d653aeb5d
+
+### Créer un workflow complet (trigger -> GEE -> processing NDVI -> output)
+# @name createWorkflow
+POST {{baseUrl}}/api/workflows
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Sample GEE NDVI Workflow",
+  "description": "Workflow de test: trigger manuel -> entrée GEE (get_images) -> traitement NDVI -> sortie",
+  "isTemplate": false,
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "type": "trigger",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "Manual Trigger",
+        "description": "Démarre le workflow manuellement",
+        "config": {
+          "triggerType": "manual"
+        },
+        "status": "IDLE"
+      }
+    },
+    {
+      "id": "gee-input-1",
+      "type": "data-input",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "label": "GEE Image Metadata",
+        "description": "Récupère des images Sentinel-2 via GEE",
+        "config": {
+          "dataSource": "gee",
+          "serviceType": "get_images",
+          "collection_id": "COPERNICUS/S2_HARMONIZED",
+          "start_date": "2024-01-01",
+          "end_date": "2024-01-15",
+          "region": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [2.0, 48.8],
+                [2.0, 48.9],
+                [2.1, 48.9],
+                [2.1, 48.8],
+                [2.0, 48.8]
+              ]
+            ]
+          },
+          "max_cloud_cover": 20,
+          "scale": 10,
+          "bands": ["B4", "B3", "B2"]
+        },
+        "status": "IDLE"
+      }
+    },
+    {
+      "id": "processing-1",
+      "type": "processing",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "label": "NDVI Processing",
+        "description": "Calcule un indice NDVI sur les données GEE",
+        "config": {
+          "processingType": "ndvi",
+          "inputNodeId": "gee-input-1"
+        },
+        "status": "IDLE"
+      }
+    },
+    {
+      "id": "output-1",
+      "type": "output",
+      "position": { "x": 700, "y": 100 },
+      "data": {
+        "label": "Store Result",
+        "description": "Stocke les résultats dans la plateforme",
+        "config": {
+          "outputType": "store",
+          "format": "geotiff"
+        },
+        "status": "IDLE"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "source": "trigger-1",
+      "target": "gee-input-1",
+      "label": "start",
+      "type": "default"
+    },
+    {
+      "id": "edge-2",
+      "source": "gee-input-1",
+      "target": "processing-1",
+      "label": "GEE data",
+      "type": "default"
+    },
+    {
+      "id": "edge-3",
+      "source": "processing-1",
+      "target": "output-1",
+      "label": "NDVI result",
+      "type": "default"
+    }
+  ]
+}
+
+###
+@workflowId = {{createWorkflow.response.body.data.id}}
+
+### Exécuter le workflow
+# @name executeWorkflow
+POST {{baseUrl}}/api/workflows/{{workflowId}}/execute
+Authorization: Bearer {{token}}
+
+{}
+
+###
+@executionId = {{executeWorkflow.response.body.data.id}}
+
+### Récupérer le workflow (avec historique d’exécutions)
+GET {{baseUrl}}/api/workflows/{{workflowId}}
+Authorization: Bearer {{token}}
+
+###
+### Lister toutes les exécutions de ce workflow
+GET {{baseUrl}}/api/workflows/{{workflowId}}/executions
+Authorization: Bearer {{token}}
+
+###
+### Récupérer une exécution précise
+GET {{baseUrl}}/api/workflows/executions/{{executionId}}
+Authorization: Bearer {{token}}
+

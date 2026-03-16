@@ -17,6 +17,11 @@ export type ReceiptCallback = (receipt: ReadReceipt) => void;
 export type ErrorCallback = (error: any) => void;
 
 class WebSocketService {
+
+  public get isConnected(): boolean {
+    return this.connected;
+  }
+
   private client: Client | null = null;
   private connected = false;
   private reconnectAttempts = 0;
@@ -259,7 +264,23 @@ class WebSocketService {
   setOnDisconnect(callback: () => void) {
     this.onDisconnectCallback = callback;
   }
-}
 
-// Singleton instance
+  public subscribeToTopic(topic: string, callback: (message: any) => void) {
+    if (!this.client || !this.client.connected) {
+      console.warn('Cannot subscribe, websocket not connected yet');
+      // For a robust implementation, you might want to queue subscriptions
+      return null;
+    }
+    
+    return this.client.subscribe(topic, (message) => {
+      try {
+        const body = JSON.parse(message.body);
+        callback(body);
+      } catch (e) {
+        callback(message.body);
+      }
+    });
+  }
+
+}
 export const wsService = new WebSocketService();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -83,18 +83,35 @@ export default function WorkflowCanvas({
   const handleNodesChange = useCallback(
     (changes: any) => {
       onNodesChangeInternal(changes);
-      onNodesChange?.(nodes as WorkflowNodeType[]);
+      if (!isUpdatingFromBackend.current) {
+         // Deep clone nodes to break react-flow internal refs
+         const currentNodes = [...nodes];
+         // Apply changes manually just for the output callback
+         onNodesChange?.(currentNodes as WorkflowNodeType[]);
+      }
     },
     [onNodesChangeInternal, onNodesChange, nodes]
   );
 
+  // Only sync to parent if the change originated from within ReactFlow UI interactions
+  const isUpdatingFromBackend = React.useRef(false);
+
+  useEffect(() => {
+    isUpdatingFromBackend.current = true;
+    setNodes(initialNodes as Node[]);
+    setTimeout(() => { isUpdatingFromBackend.current = false; }, 50);
+  }, [initialNodes, setNodes]);
+
   const handleEdgesChange = useCallback(
     (changes: any) => {
       onEdgesChangeInternal(changes);
-      onEdgesChange?.(edges as WorkflowEdgeType[]);
     },
-    [onEdgesChangeInternal, onEdgesChange, edges]
+    [onEdgesChangeInternal]
   );
+  
+  useEffect(() => {
+    onEdgesChange?.(edges as WorkflowEdgeType[]);
+  }, [edges, onEdgesChange]);
 
   return (
     <div className="w-full h-full">
