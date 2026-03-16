@@ -18,7 +18,8 @@ import java.util.Map;
  * Executor for data input nodes - integrates with GEE Service
  * Fetches satellite imagery from Google Earth Engine
  */
-@Component
+// Note: Gee functionality is now handled by DataInputNodeExecutor (dataSource = "gee").
+// This class is kept for reference but is no longer registered as a NodeExecutor bean.
 public class GeeInputNodeExecutor implements NodeExecutor {
     private static final Logger logger = LoggerFactory.getLogger(GeeInputNodeExecutor.class);
 

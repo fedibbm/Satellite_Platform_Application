@@ -2,6 +2,9 @@ package com.enit.satellite_platform.modules.workflow.execution.nodes;
 
 import com.enit.satellite_platform.modules.project_management.dto.ProjectDto;
 import com.enit.satellite_platform.modules.project_management.services.ProjectService;
+import com.enit.satellite_platform.modules.resource_management.GeoSpacialTools.gee.service.GeeService;
+import com.enit.satellite_platform.modules.resource_management.dto.ProcessingResponse;
+import com.enit.satellite_platform.modules.resource_management.dto.ServiceRequest;
 import com.enit.satellite_platform.modules.resource_management.image_management.dto.ImageDTO;
 import com.enit.satellite_platform.modules.resource_management.image_management.services.ImageService;
 import com.enit.satellite_platform.modules.workflow.entities.NodeType;
@@ -33,6 +36,9 @@ public class DataInputNodeExecutor implements NodeExecutor {
     @Autowired
     private ImageService imageService;
 
+    @Autowired(required = false)
+    private GeeService geeService;
+
     @Override
     public NodeType getNodeType() {
         return NodeType.DATA_INPUT;
@@ -43,24 +49,27 @@ public class DataInputNodeExecutor implements NodeExecutor {
         logger.info("Executing data input node: {}", node.getId());
 
         try {
-            Map<String, Object> config = node.getData().getConfig();
+            Map<String, Object> config = context.getResolvedNodeConfig(node);
             
             if (config == null || config.isEmpty()) {
                 return NodeExecutionResult.failure("Node configuration is required");
             }
 
             String dataSource = (String) config.getOrDefault("dataSource", "project");
-            
+
             switch (dataSource.toLowerCase()) {
                 case "project":
                     return NodeExecutionResult.success(loadProjectData(config));
-                    
+
                 case "images":
                     return NodeExecutionResult.success(loadImageData(config));
-                    
+
                 case "image":
                     return NodeExecutionResult.success(loadSingleImage(config));
-                    
+
+                case "gee":
+                    return NodeExecutionResult.success(loadGeeData(config, node));
+
                 default:
                     return NodeExecutionResult.failure("Unknown data source: " + dataSource);
             }
@@ -69,6 +78,72 @@ public class DataInputNodeExecutor implements NodeExecutor {
             logger.error("Error executing data input node: {}", node.getId(), e);
             return NodeExecutionResult.failure("Data input execution failed: " + e.getMessage());
         }
+    }
+
+    /**
+     * Load data from Google Earth Engine through the GeeService.
+     * Expects configuration compatible with GeneralEarthEngineRequest2 in the Python service.
+     */
+    private Map<String, Object> loadGeeData(Map<String, Object> config, WorkflowNode node) {
+        if (geeService == null) {
+            logger.error("GeeService bean is not available - cannot execute GEE data input");
+            throw new IllegalStateException("GEE service is not configured on the backend");
+        }
+
+        String serviceType = (String) config.getOrDefault("serviceType", "get_images");
+
+        ServiceRequest geeRequest = new ServiceRequest();
+        geeRequest.setServiceType(serviceType);
+
+        Map<String, Object> parameters = new HashMap<>();
+
+        if (config.containsKey("collection_id")) {
+            parameters.put("collection_id", config.get("collection_id"));
+        }
+        if (config.containsKey("image_id")) {
+            parameters.put("image_id", config.get("image_id"));
+        }
+        if (config.containsKey("region")) {
+            parameters.put("region", config.get("region"));
+        }
+        if (config.containsKey("start_date")) {
+            parameters.put("start_date", config.get("start_date"));
+        }
+        if (config.containsKey("end_date")) {
+            parameters.put("end_date", config.get("end_date"));
+        }
+        if (config.containsKey("max_cloud_cover")) {
+            parameters.put("max_cloud_cover", config.get("max_cloud_cover"));
+        }
+        if (config.containsKey("scale")) {
+            parameters.put("scale", config.get("scale"));
+        }
+        if (config.containsKey("bands")) {
+            parameters.put("bands", config.get("bands"));
+        }
+
+        geeRequest.setParameters(parameters);
+
+        logger.info("Calling GeeService for node {} with serviceType: {}", node.getId(), serviceType);
+        ProcessingResponse response = geeService.processGeeRequest(geeRequest);
+
+        if (response == null) {
+            throw new RuntimeException("GEE service returned null response");
+        }
+
+        if ("error".equalsIgnoreCase(response.getStatus())) {
+            logger.error("GEE service returned error for node {}: {}", node.getId(), response.getMessage());
+            throw new RuntimeException("GEE service error: " + response.getMessage());
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", response.getStatus());
+        result.put("message", response.getMessage());
+        result.put("data", response.getData());
+        result.put("type", response.getType());
+        result.put("imageId", response.getImageId());
+
+        return result;
     }
 
     private Map<String, Object> loadProjectData(Map<String, Object> config) {
@@ -180,17 +255,25 @@ public class DataInputNodeExecutor implements NodeExecutor {
         }
 
         String dataSource = (String) config.getOrDefault("dataSource", "project");
-        
+
         switch (dataSource.toLowerCase()) {
             case "project":
                 return config.containsKey("projectId");
-                
+
             case "images":
                 return config.containsKey("projectId");
-                
+
             case "image":
                 return config.containsKey("imageId");
-                
+
+            case "gee":
+                boolean hasRegion = config.containsKey("region");
+                boolean hasCollectionOrImage = config.containsKey("collection_id") || config.containsKey("image_id");
+                if (!hasRegion || !hasCollectionOrImage) {
+                    logger.warn("GEE data-input node {} is missing required 'region' or 'collection_id'/'image_id'", node.getId());
+                }
+                return hasRegion && hasCollectionOrImage;
+
             default:
                 return false;
         }

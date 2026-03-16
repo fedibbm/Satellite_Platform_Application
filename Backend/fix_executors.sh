@@ -1,0 +1,3 @@
+sed -i 's/Map<String, Object> config = node.getData().getConfig();/Map<String, Object> config = context.getResolvedNodeConfig(node.getId(), node.getData().getConfig());/g' src/main/java/com/enit/satellite_platform/modules/workflow/execution/nodes/DataInputNodeExecutor.java
+sed -i 's/Map<String, Object> config = node.getData().getConfig();/Map<String, Object> config = context.getResolvedNodeConfig(node.getId(), node.getData().getConfig());/g' src/main/java/com/enit/satellite_platform/modules/workflow/execution/nodes/ProcessingNodeExecutor.java
+sed -i 's/@Value("${python.backend.url}")/@Value("${external.app.endpoints.image_processor:http:\/\/localhost:8000}")/g' src/main/java/com/enit/satellite_platform/modules/workflow/execution/nodes/ProcessingNodeExecutor.java

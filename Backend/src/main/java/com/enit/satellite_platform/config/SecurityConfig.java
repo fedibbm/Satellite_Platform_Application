@@ -76,7 +76,7 @@ public class SecurityConfig {
                         // Restrict other Actuator endpoints to users with ROLE_ADMIN
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
                         // Restrict user endpoints to users with ROLE_THEMATICIAN
-                        .requestMatchers("/api/thematician/**").hasRole("THEMATICIAN")
+                        .requestMatchers("/api/thematician/**").hasAnyRole("THEMATICIAN", "ADMIN")
                         // Allow authenticated users to access workflow endpoints
                         .requestMatchers("/api/workflows/**").authenticated()
                         // Require authentication for all other requests
@@ -100,10 +100,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Specify the frontend origin explicitly - required when using credentials
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080")); // Frontend dev server
+        // Allow all origins
+        configuration.setAllowedOriginPatterns(Arrays.asList("*")); // Allow all origins with credentials
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "content-type", "x-requested-with", "Cookie")); // Added Cookie header
+        configuration.setAllowedHeaders(Arrays.asList("*")); // Allow all headers
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Set-Cookie"));
         configuration.setAllowCredentials(true); // Allow cookies to be sent
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

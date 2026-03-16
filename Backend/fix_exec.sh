@@ -1,0 +1,1 @@
+sed -i 's/Map<String, Object> config = node.getData().getConfig();/Map<String, Object> config = context.getResolvedNodeConfig(node.getId(), node.getData().getConfig());/' src/main/java/com/enit/satellite_platform/modules/workflow/execution/nodes/ProcessingNodeExecutor.java

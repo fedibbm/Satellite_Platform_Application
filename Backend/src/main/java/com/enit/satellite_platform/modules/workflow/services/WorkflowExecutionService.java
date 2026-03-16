@@ -10,6 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import com.enit.satellite_platform.modules.workflow.config.WorkflowRabbitMQConfig;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,6 +33,17 @@ public class WorkflowExecutionService {
     
     @Autowired
     private NodeRegistry nodeRegistry;
+
+    @Autowired
+    private com.enit.satellite_platform.modules.workflow.execution.graph.WorkflowValidator workflowValidator;
+
+    @Autowired
+    private com.enit.satellite_platform.modules.workflow.execution.graph.ExecutionPlanner executionPlanner;
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     public WorkflowExecutionDTO executeWorkflow(String workflowId, String userEmail) {
         logger.info("Starting execution for workflow: {} by user: {}", workflowId, userEmail);
@@ -73,34 +88,73 @@ public class WorkflowExecutionService {
         workflow.getExecutionIds().add(savedExecution.getId());
         workflowRepository.save(workflow);
 
-        // Execute workflow asynchronously (for now, just mark as completed)
-        // In a real implementation, this would trigger the actual execution
-        try {
-            executeWorkflowNodes(savedExecution, currentVersion);
-            logger.info("executeWorkflowNodes completed for workflow: {}", workflowId);
-        } catch (Exception e) {
-            logger.error("Uncaught exception in executeWorkflowNodes for workflow: {} - Type: {}, Message: {}", 
-                workflowId, e.getClass().getSimpleName(), e.getMessage(), e);
-            savedExecution.setStatus(ExecutionStatus.FAILED);
-            WorkflowLog errorLog = new WorkflowLog();
-            errorLog.setTimestamp(LocalDateTime.now());
-            errorLog.setNodeId("system");
-            errorLog.setLevel(LogLevel.ERROR);
-            String errorMessage = String.format("Workflow execution failed: %s - %s", 
-                e.getClass().getSimpleName(), e.getMessage());
-            errorLog.setMessage(errorMessage);
-            savedExecution.getLogs().add(errorLog);
-            savedExecution.setCompletedAt(LocalDateTime.now());
-            executionRepository.save(savedExecution);
-            logger.info("Saved execution with FAILED status after uncaught exception");
-        }
+        // Submit to RabbitMQ for asynchronous execution
+        rabbitTemplate.convertAndSend(WorkflowRabbitMQConfig.WORKFLOW_EXECUTION_QUEUE, savedExecution.getId());
+        logger.info("Workflow execution {} submitted to RabbitMQ for processing", savedExecution.getId());
 
         // Reload execution from database to ensure we have the latest state
         WorkflowExecution finalExecution = executionRepository.findById(savedExecution.getId())
                 .orElse(savedExecution);
-        
-        logger.info("Returning execution {} with status: {}", finalExecution.getId(), finalExecution.getStatus());
+
+        logger.info("Execution {} finished with status: {}", finalExecution.getId(), finalExecution.getStatus());
+
+        // If execution ultimately failed, surface a meaningful error instead of silently returning success
+        if (finalExecution.getStatus() == ExecutionStatus.FAILED) {
+            String errorMessage = "Workflow execution failed";
+
+            if (finalExecution.getLogs() != null && !finalExecution.getLogs().isEmpty()) {
+                // Find the last ERROR-level log if available
+                WorkflowLog lastErrorLog = finalExecution.getLogs().stream()
+                        .filter(l -> l.getLevel() == LogLevel.ERROR)
+                        .reduce((first, second) -> second)
+                        .orElse(null);
+
+                if (lastErrorLog != null) {
+                    errorMessage = String.format(
+                            "Workflow execution failed at node '%s': %s",
+                            lastErrorLog.getNodeId(),
+                            lastErrorLog.getMessage()
+                    );
+                }
+            }
+
+            throw new RuntimeException(errorMessage);
+        }
+
         return workflowMapper.toExecutionDTO(finalExecution);
+    }
+
+    
+    @RabbitListener(queues = WorkflowRabbitMQConfig.WORKFLOW_EXECUTION_QUEUE)
+    public void processWorkflowExecutionQueue(String executionId) {
+        logger.info("Received executionId {} from queue", executionId);
+        try {
+            WorkflowExecution execution = executionRepository.findById(executionId).orElse(null);
+            if (execution == null) {
+                logger.error("Execution not found: {}", executionId);
+                return;
+            }
+            
+            Workflow workflow = workflowRepository.findById(execution.getWorkflowId()).orElse(null);
+            if (workflow == null) {
+                logger.error("Workflow not found: {}", execution.getWorkflowId());
+                return;
+            }
+            
+            WorkflowVersion version = workflow.getVersions().stream()
+                    .filter(v -> v.getVersion().equals(execution.getVersion()))
+                    .findFirst()
+                    .orElse(null);
+                    
+            if (version == null) {
+                logger.error("Version {} not found for workflow {}", execution.getVersion(), workflow.getId());
+                return;
+            }
+            
+            executeWorkflowNodes(execution, version);
+        } catch (Exception e) {
+            logger.error("Failed to process execution {} from queue", executionId, e);
+        }
     }
 
     private void executeWorkflowNodes(WorkflowExecution execution, WorkflowVersion version) {
@@ -131,83 +185,148 @@ public class WorkflowExecutionService {
             new HashMap<>()
         );
 
-        // Build execution order using topological sort
-        List<WorkflowNode> executionOrder;
+        // Validate workflow graph first
+        com.enit.satellite_platform.modules.workflow.execution.graph.WorkflowValidator.ValidationResult validationResult = workflowValidator.validate(version);
+        if (!validationResult.isValid()) {
+            markExecutionFailed(execution, "system", "Workflow Validation Failed: " + validationResult.getErrorMessage());
+            logger.error("Workflow validation failed: {}", validationResult.getErrorMessage());
+            return;
+        }
+
+        // Build execution order using our new ExecutionPlanner (Topological Sort)
+        List<List<WorkflowNode>> executionPlan;
         try {
-            executionOrder = buildExecutionOrder(nodes, edges);
+            executionPlan = executionPlanner.planExecution(version);
+            if (executionPlan.isEmpty()) {
+                throw new RuntimeException("Execution plan generated 0 stages.");
+            }
         } catch (Exception e) {
             logger.error("Error building execution order: {}", e.getMessage());
             markExecutionFailed(execution, "system", "Failed to build execution order: " + e.getMessage());
             return;
         }
 
-        logger.info("Execution order established for {} nodes", executionOrder.size());
+        logger.info("Execution order established. Stages to execute: {}", executionPlan.size());
 
-        // Execute nodes in order
-        for (WorkflowNode node : executionOrder) {
-            try {
-                logger.info("Executing node: {} of type: {}", node.getId(), node.getType());
-
-                // Log node start
-                addLog(execution, node.getId(), LogLevel.INFO, "Starting node execution: " + node.getData().getLabel());
-
-                // Get the executor for this node type
-                logger.debug("Looking up executor for node type: {}", node.getType());
-                NodeExecutor executor = nodeRegistry.getExecutor(node.getType())
-                    .orElseThrow(() -> {
-                        logger.error("No executor found for node type: {}", node.getType());
-                        return new RuntimeException("No executor found for node type: " + node.getType());
-                    });
-
-                // Validate node before execution
-                logger.debug("Validating node: {}", node.getId());
-                if (!executor.validate(node)) {
-                    logger.error("Node validation failed for node: {}", node.getId());
-                    throw new RuntimeException("Node validation failed: " + node.getId());
-                }
-                logger.debug("Node validation passed: {}", node.getId());
-
-                // Execute the node
-                logger.debug("Executing node: {} with executor: {}", node.getId(), executor.getClass().getSimpleName());
-                NodeExecutionResult result = executor.execute(node, context);
-                logger.debug("Node execution completed: {}, success: {}", node.getId(), result.isSuccess());
-
-                // Process result
-                if (result.isSuccess()) {
-                    // Store node output in context for subsequent nodes
-                    context.getNodeOutputs().put(node.getId(), result.getData());
+        // Execute node stages in order
+        for (List<WorkflowNode> stage : executionPlan) {
+            logger.info("Executing new stage with {} nodes", stage.size());
+            
+            // NOTE: Currently executing sequentially within the stage, 
+            // but this loop allows for future adaptation to parallel execution via CompletableFuture
+            for (WorkflowNode node : stage) {
+                try {
+                    // --- SKIPPING LOGIC FOR DECISION NODES ---
+                    boolean shouldSkip = false;
                     
-                    // Log success
-                    addLog(execution, node.getId(), LogLevel.INFO, 
-                        "Node completed successfully");
+                    // If it has incoming edges, check if they are all active
+                    List<com.enit.satellite_platform.modules.workflow.entities.WorkflowEdge> inboundEdges = edges.stream()
+                            .filter(e -> e.getTarget().equals(node.getId()))
+                            .collect(Collectors.toList());
 
-                    // For decision nodes, handle conditional routing
-                    if (node.getType() == NodeType.DECISION && result.getData() != null) {
-                        Map<String, Object> output = (Map<String, Object>) result.getData();
-                        Boolean decision = (Boolean) output.get("decision");
-                        logger.info("Decision node {} returned: {}", node.getId(), decision);
+                    if (!inboundEdges.isEmpty()) {
+                        boolean hasActiveInbound = false;
+                        for (com.enit.satellite_platform.modules.workflow.entities.WorkflowEdge edge : inboundEdges) {
+                            String sourceId = edge.getSource();
+                            
+                            // Check if source was skipped
+                            Object sourceSkipped = context.getGlobalVariables().get(sourceId + ".skipped");
+                            if (Boolean.TRUE.equals(sourceSkipped)) {
+                                continue;
+                            }
+                            
+                            // Check if source was a decision that evaluated differently
+                            Object decisionResult = context.getGlobalVariables().get(sourceId + ".decision");
+                            if (decisionResult != null) {
+                                String expectedLabel = edge.getLabel() != null ? edge.getLabel().toLowerCase() : "";
+                                // The Decision node returns Boolean decision. We convert "true"/"false" and match
+                                String decisionStr = String.valueOf(decisionResult).toLowerCase();
+                                if (!expectedLabel.isEmpty() && !expectedLabel.equals(decisionStr)) {
+                                    continue;
+                                }
+                            }
+                            
+                            hasActiveInbound = true;
+                            break;
+                        }
                         
-                        // Store decision for edge filtering
-                        context.getGlobalVariables().put(node.getId() + ".decision", decision);
+                        if (!hasActiveInbound) {
+                            shouldSkip = true;
+                        }
                     }
-                } else {
-                    // Node execution failed
-                    String errorMsg = result.getErrors().isEmpty() ? 
-                        "Node execution failed" : String.join(", ", result.getErrors());
-                    throw new RuntimeException(errorMsg);
+
+                    if (shouldSkip) {
+                        logger.info("Skipping node {} due to conditional routing", node.getId());
+                        context.getGlobalVariables().put(node.getId() + ".skipped", true);
+                        addLog(execution, node.getId(), LogLevel.INFO, "Skipped node execution due to conditional routing");
+                        continue;
+                    }
+
+                    notifyStatusUpdate(execution.getId(), "NODE_START", "Executing node", Map.of("nodeId", node.getId()));
+                    logger.info("Executing node: {} of type: {}", node.getId(), node.getType());
+
+                    // Log node start
+                    addLog(execution, node.getId(), LogLevel.INFO, "Starting node execution: " + node.getData().getLabel());
+
+                    // Get the executor for this node type
+                    logger.debug("Looking up executor for node type: {}", node.getType());
+                    NodeExecutor executor = nodeRegistry.getExecutor(node.getType())
+                        .orElseThrow(() -> {
+                            logger.error("No executor found for node type: {}", node.getType());
+                            return new RuntimeException("No executor found for node type: " + node.getType());
+                        });
+
+                    // Validate node before execution
+                    logger.debug("Validating node: {}", node.getId());
+                    if (!executor.validate(node)) {
+                        logger.error("Node validation failed for node: {}", node.getId());
+                        throw new RuntimeException("Node validation failed: " + node.getId());
+                    }
+                    logger.debug("Node validation passed: {}", node.getId());
+
+                    // Execute the node
+                    logger.debug("Executing node: {} with executor: {}", node.getId(), executor.getClass().getSimpleName());
+                    NodeExecutionResult result = executor.execute(node, context);
+                    logger.debug("Node execution completed: {}, success: {}", node.getId(), result.isSuccess());
+
+                    // Process result
+                    if (result.isSuccess()) {
+                        // Store node output in context for subsequent nodes
+                        context.getNodeOutputs().put(node.getId(), result.getData());
+                        
+                        notifyStatusUpdate(execution.getId(), "NODE_COMPLETE", "Node completed", Map.of("nodeId", node.getId(), "result", result.getData()));
+                        // Log success
+                        addLog(execution, node.getId(), LogLevel.INFO, 
+                            "Node completed successfully");
+
+                        // For decision nodes, handle conditional routing
+                        if (node.getType() == NodeType.DECISION && result.getData() != null) {
+                            Map<String, Object> output = (Map<String, Object>) result.getData();
+                            Boolean decision = (Boolean) output.get("decision");
+                            logger.info("Decision node {} returned: {}", node.getId(), decision);
+                            
+                            // Store decision for edge filtering
+                            context.getGlobalVariables().put(node.getId() + ".decision", decision);
+                        }
+                    } else {
+                        // Node execution failed
+                        String errorMsg = result.getErrors().isEmpty() ? 
+                            "Node execution failed" : String.join(", ", result.getErrors());
+                        throw new RuntimeException(errorMsg);
+                    }
+
+                    // Save execution state after each node
+                    executionRepository.save(execution);
+
+                } catch (Exception e) {
+                    logger.error("Error executing node: {} - Type: {}, Message: {}", 
+                        node.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
+                    String detailedError = String.format("Node execution error: %s - %s", 
+                        e.getClass().getSimpleName(), e.getMessage());
+                    markExecutionFailed(execution, node.getId(), detailedError);
+                    logger.info("Marked execution as FAILED, returning from executeWorkflowNodes");
+                    return; // Don't throw, just return after marking as failed
                 }
-
-                // Save execution state after each node
-                executionRepository.save(execution);
-
-            } catch (Exception e) {
-                logger.error("Error executing node: {} - Type: {}, Message: {}", 
-                    node.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
-                String detailedError = String.format("Node execution error: %s - %s", 
-                    e.getClass().getSimpleName(), e.getMessage());
-                markExecutionFailed(execution, node.getId(), detailedError);
-                logger.info("Marked execution as FAILED, returning from executeWorkflowNodes");
-                return; // Don't throw, just return after marking as failed
             }
         }
 
@@ -340,4 +459,20 @@ public class WorkflowExecutionService {
 
         return workflowMapper.toExecutionDTO(execution);
     }
+
+    private void notifyStatusUpdate(String executionId, String status, String message, Object data) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("executionId", executionId);
+            payload.put("status", status);
+            payload.put("message", message);
+            if (data != null) payload.put("data", data);
+            
+            // Broadcast to the specific workflow execution topic
+            messagingTemplate.convertAndSend("/topic/workflow.execution." + executionId, payload);
+        } catch (Exception e) {
+            logger.warn("Failed to broadcast execution status update", e);
+        }
+    }
+
 }

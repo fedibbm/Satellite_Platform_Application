@@ -6,14 +6,21 @@ import com.enit.satellite_platform.modules.workflow.execution.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.Base64;
+
+import com.enit.satellite_platform.modules.resource_management.image_management.services.ImageService;
+import com.enit.satellite_platform.modules.resource_management.GeoSpacialTools.openCV.vegetation_Index_calculation.VegetationIndexService;
+import com.enit.satellite_platform.modules.resource_management.GeoSpacialTools.openCV.vegetation_Index_calculation.dto.VegetationIndexRequest;
+import com.enit.satellite_platform.modules.resource_management.GeoSpacialTools.openCV.vegetation_Index_calculation.dto.VegetationIndexResult;
 
 /**
  * Executor for processing nodes - integrates with image processing service
@@ -24,10 +31,10 @@ public class ProcessingNodeExecutor implements NodeExecutor {
     private static final Logger logger = LoggerFactory.getLogger(ProcessingNodeExecutor.class);
 
     @Autowired
-    private RestTemplate restTemplate;
+    private ImageService imageService;
 
-    @Value("${python.backend.url}")
-    private String imageProcessingUrl;
+    @Autowired
+    private VegetationIndexService vegetationIndexService;
 
     @Override
     public NodeType getNodeType() {
@@ -39,7 +46,7 @@ public class ProcessingNodeExecutor implements NodeExecutor {
         logger.info("Executing processing node: {}", node.getId());
 
         try {
-            Map<String, Object> config = node.getData().getConfig();
+            Map<String, Object> config = context.getResolvedNodeConfig(node);
             
             if (config == null || config.isEmpty()) {
                 return NodeExecutionResult.failure("Node configuration is required for processing");
@@ -114,45 +121,67 @@ public class ProcessingNodeExecutor implements NodeExecutor {
     private Map<String, Object> processVegetationIndex(String indexType, Map<String, Object> inputData, Map<String, Object> config) {
         logger.info("Processing vegetation index: {}", indexType);
         
+        File tempFile = null;
         try {
-            // Build request for image processing service
-            Map<String, Object> request = new HashMap<>();
-            request.put("operation", indexType);
-            
-            // Add image data from input if available
-            if (inputData.containsKey("data")) {
-                request.put("imageData", inputData.get("data"));
+            String imageId = null;
+            if (inputData.containsKey("imageId")) {
+                imageId = (String) inputData.get("imageId");
+            } else if (config.containsKey("imageId")) {
+                imageId = (String) config.get("imageId");
             }
             
-            // Add configuration parameters
-            if (config.containsKey("imageUrl")) {
-                request.put("imageUrl", config.get("imageUrl"));
+            if (imageId == null) {
+                throw new IllegalArgumentException("No imageId provided in input data or config.");
             }
-            if (config.containsKey("bands")) {
-                request.put("bands", config.get("bands"));
-            }
-            if (config.containsKey("threshold")) {
-                request.put("threshold", config.get("threshold"));
+            
+            // Get file from DB
+            MultipartFile multipartFile = imageService.getImageData(imageId);
+            if (multipartFile == null || multipartFile.isEmpty()) {
+                throw new IllegalArgumentException("Could not extract image data for imageId: " + imageId);
             }
 
-            // Call image processing service
-            String endpoint = imageProcessingUrl + "/process/" + indexType;
-            logger.info("Calling image processing service: {}", endpoint);
+            // Create temp file
+            tempFile = File.createTempFile("processing_", "_" + multipartFile.getOriginalFilename());
+            Files.copy(multipartFile.getInputStream(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            VegetationIndexRequest request = new VegetationIndexRequest();
+            request.setIndexType(indexType.toUpperCase());
             
-            ResponseEntity<Map> response = restTemplate.postForEntity(endpoint, entity, Map.class);
-            
-            Map<String, Object> result = new HashMap<>();
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                result.putAll(response.getBody());
-                result.put("processingType", indexType);
-                result.put("status", "success");
+            if (config.containsKey("bands")) {
+                Object bandsObj = config.get("bands");
+                if (bandsObj instanceof List) {
+                    List<?> bands = (List<?>) bandsObj;
+                    if (bands.size() > 0 && bands.get(0) instanceof Number) request.setRedBand(((Number)bands.get(0)).intValue());
+                    if (bands.size() > 1 && bands.get(1) instanceof Number) request.setNirBand(((Number)bands.get(1)).intValue());
+                    if (bands.size() > 2 && bands.get(2) instanceof Number) request.setBlueBand(((Number)bands.get(2)).intValue());
+                }
+            }
+
+            VegetationIndexResult res = null;
+            String uppercaseType = indexType.toUpperCase();
+            if ("NDVI".equals(uppercaseType)) {
+                res = vegetationIndexService.calculateNDVI(tempFile, request, null);
+            } else if ("EVI".equals(uppercaseType)) {
+                res = vegetationIndexService.calculateEVI(tempFile, request, null);
+            } else if ("SAVI".equals(uppercaseType)) {
+                res = vegetationIndexService.calculateSAVI(tempFile, request, null);
+            } else if ("NDWI".equals(uppercaseType)) {
+                res = vegetationIndexService.calculateNDWI(tempFile, request.getRedBand(), request.getNirBand(), null);
             } else {
-                result.put("status", "error");
-                result.put("message", "Processing service returned status: " + response.getStatusCode());
+                res = vegetationIndexService.calculateIndex(request, tempFile, null);
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("processingType", indexType);
+            
+            if (res != null) {
+                 result.put("status", "success");
+                 result.put("statistics", res.getStatistics());
+                 result.put("processingDuration", res.getProcessingDuration());
+                 if (res.getProcessedImage() != null) {
+                    String base64Image = Base64.getEncoder().encodeToString(res.getProcessedImage());
+                    result.put("processedImageBase64", base64Image);
+                 }
             }
             
             return result;
@@ -164,6 +193,10 @@ public class ProcessingNodeExecutor implements NodeExecutor {
             errorResult.put("message", "Processing service error: " + e.getMessage());
             errorResult.put("processingType", indexType);
             return errorResult;
+        } finally {
+             if (tempFile != null && tempFile.exists()) {
+                 tempFile.delete();
+             }
         }
     }
 
@@ -175,8 +208,6 @@ public class ProcessingNodeExecutor implements NodeExecutor {
         result.put("status", "success");
         result.put("message", "Water bodies detection completed");
         
-        // This would call the actual water bodies detection endpoint
-        // For now, return a placeholder
         result.put("waterBodiesDetected", true);
         result.put("coverage", 15.5); // Percentage
         
@@ -191,7 +222,6 @@ public class ProcessingNodeExecutor implements NodeExecutor {
         result.put("status", "success");
         result.put("message", "Change detection completed");
         
-        // This would call the actual change detection endpoint
         result.put("changesDetected", true);
         result.put("changePercentage", 8.3);
         

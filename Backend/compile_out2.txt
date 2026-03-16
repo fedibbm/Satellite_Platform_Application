@@ -1,0 +1,67 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------< com.example:project >-------------------------
+[INFO] Building project 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from geotoolkit: https://maven.geotoolkit.org/org/eclipse/emf/org.eclipse.emf.common/maven-metadata.xml
+[WARNING] Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+Downloading from geotoolkit: https://maven.geotoolkit.org/org/eclipse/emf/org.eclipse.emf.ecore/maven-metadata.xml
+[WARNING] Could not transfer metadata org.eclipse.emf:org.eclipse.emf.ecore/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[WARNING] org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml failed to transfer from https://maven.geotoolkit.org during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of geotoolkit has elapsed or updates are forced. Original error: Could not transfer metadata org.eclipse.emf:org.eclipse.emf.common/maven-metadata.xml from/to geotoolkit (https://maven.geotoolkit.org): maven.geotoolkit.org: Name or service not known
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ project ---
+[INFO] Deleting /home/fedi/dev/pfa2/Satellite_Platform_Application/Backend/target
+[INFO] 
+[INFO] --- os:1.7.1:detect (default) @ project ---
+[INFO] ------------------------------------------------------------------------
+[INFO] Detecting the operating system and CPU architecture
+[INFO] ------------------------------------------------------------------------
+[INFO] os.detected.name: linux
+[INFO] os.detected.arch: x86_64
+[INFO] os.detected.bitness: 64
+[INFO] os.detected.version: 6.17
+[INFO] os.detected.version.major: 6
+[INFO] os.detected.version.minor: 17
+[INFO] os.detected.release: ubuntu
+[INFO] os.detected.release.version: 24.04
+[INFO] os.detected.release.like.ubuntu: true
+[INFO] os.detected.release.like.debian: true
+[INFO] os.detected.classifier: linux-x86_64
+[INFO] 
+[INFO] --- build-helper:3.5.0:add-source (add-source) @ project ---
+[INFO] Source directory: /home/fedi/dev/pfa2/Satellite_Platform_Application/Backend/target/generated-sources/protobuf/java added.
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ project ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ project ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 276 source files with javac [debug parameters release 17] to target/classes
+[WARNING] /home/fedi/dev/pfa2/Satellite_Platform_Application/Backend/src/main/java/com/enit/satellite_platform/shared/mapper/ResultsMapper.java:[35,24] Unmapped target property: "projectId".
+[INFO] /home/fedi/dev/pfa2/Satellite_Platform_Application/Backend/src/main/java/com/enit/satellite_platform/modules/resource_management/utils/communication_management/impl/grpc/PayloadRequest.java: Some input files use or override a deprecated API.
+[INFO] /home/fedi/dev/pfa2/Satellite_Platform_Application/Backend/src/main/java/com/enit/satellite_platform/modules/resource_management/utils/communication_management/impl/grpc/PayloadRequest.java: Recompile with -Xlint:deprecation for details.
+[INFO] /home/fedi/dev/pfa2/Satellite_Platform_Application/Backend/src/main/java/com/enit/satellite_platform/modules/workflow/services/WorkflowExecutionService.java: Some input files use unchecked or unsafe operations.
+[INFO] /home/fedi/dev/pfa2/Satellite_Platform_Application/Backend/src/main/java/com/enit/satellite_platform/modules/workflow/services/WorkflowExecutionService.java: Recompile with -Xlint:unchecked for details.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  14.263 s
+[INFO] Finished at: 2026-03-16T04:51:18+01:00
+[INFO] ------------------------------------------------------------------------
