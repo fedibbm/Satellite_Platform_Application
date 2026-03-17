@@ -695,6 +695,9 @@ async def fetch_image_metadata(
         images_to_export = []
         total_export_size = 0
         
+        # Initialize selected_bands from the function argument to avoid UnboundLocalError
+        selected_bands = bands or []
+
         # Handle visualization parameters
         vis_params = visualization_params.copy() if visualization_params else {}
         # Only set default bands if not specified, but respect user input
@@ -1017,51 +1020,6 @@ async def fetch_image_metadata(
             can_export = False # Prevent export initiation
 
         export_results = [] # To store results from export_to_drive calls
-        if can_export:
-                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                        safe_image_id = image_info['id'].replace('/', '_')
-                        base_export_name = place_name if place_name else "metadata_export"
-                        export_name = f"{base_export_name}_{safe_image_id}_{timestamp}"
-                        try:
-                            # Step 1: Create dict with only standard types (NO float, NO GEE objects yet)
-                            export_item = {
-                                "export_name": export_name,
-                                "size": image_size,
-                                "scale": scale,
-                                "fileFormat": export_format if export_format else "GeoTIFF",
-                                "folder": export_destination if export_destination else "GEE_Images",
-                            }
-
-                            # Step 2: Add the float
-                            export_item["maxPixels"] = 1e13
-
-                            # Step 3: Add CRS (standard type)
-                            if crs:
-                                export_item["crs"] = crs
-
-                            # Step 4: Add GEE Geometry object
-                            export_item["region"] = image_region
-
-                            # Step 5: Add GEE Image object
-                            export_item["image"] = vis_image
-
-                            # Step 6: Handle export_params (Dictionary update)
-                            if export_params:
-                                if isinstance(export_params, dict):
-                                    export_item.update(export_params)
-                                else:
-                                    logger.warning(f"Ignoring non-dictionary 'export_params': {type(export_params)}")
-
-                            images_to_export.append(export_item)
-                        except Exception as diag_error:
-                            raise # Re-raise to see traceback
-
-                        full_res_url = None # Set outside block
-                        
-        else:
-            logger.warning(f"Non-size related EEException during URL generation for {image_info['id']}: {error_str}")
-            full_res_url = None
-    
         
         # Prepare result
         result = {

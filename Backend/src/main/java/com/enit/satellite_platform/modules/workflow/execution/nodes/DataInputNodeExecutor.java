@@ -119,7 +119,18 @@ public class DataInputNodeExecutor implements NodeExecutor {
             parameters.put("scale", config.get("scale"));
         }
         if (config.containsKey("bands")) {
-            parameters.put("bands", config.get("bands"));
+            Object bandsObj = config.get("bands");
+            if (bandsObj instanceof String) {
+                String[] bandsArray = ((String) bandsObj).split(",");
+                // Trim whitespace from each band
+                java.util.List<String> bandsList = new java.util.ArrayList<>();
+                for (String band : bandsArray) {
+                    bandsList.add(band.trim());
+                }
+                parameters.put("bands", bandsList);
+            } else {
+                parameters.put("bands", bandsObj);
+            }
         }
 
         geeRequest.setParameters(parameters);

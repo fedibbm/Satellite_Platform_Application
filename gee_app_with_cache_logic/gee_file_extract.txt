@@ -1,0 +1,186 @@
+   895	
+   896	            except ee.EEException as img_error:
+   897	                error_str = str(img_error)
+   898	                logger.warning(f"Could not generate direct download URL for {image_info['id']}: {error_str}")
+   899	
+   900	                size_match = re.search(r'Total request size \((\d+) bytes\)', error_str)
+   901	                # Check if it's the size limit error AND we have a visualized image
+   902	                if size_match and "must be less than or equal to" in error_str and 'vis_image' in locals():
+   903	                    image_size = int(size_match.group(1)) # Store the estimated size
+   904	                    logger.info(f"Image {image_info['id']} estimated size {image_size / 1024 / 1024:.2f} MB exceeds direct download limit.")
+   905	
+   906	                    logger.info("Checking if exporting is allowed based on storage...")
+   907	                    if can_export: # Check if exporting is allowed based on storage
+   908	                        total_export_size += image_size # Add to total potential export size
+   909	                        logger.info(f"test2 {total_export_size}")
+   910	
+   911	                            # --->>> ADD THIS LOGGING <<<---
+   912	                        logger.debug(f"Checking state BEFORE 'if can_export'. Type(total_export_size): {type(total_export_size)}, Value: {total_export_size}")
+   913	                        logger.debug(f"Checking state BEFORE 'if can_export'. Type(image_size): {type(image_size)}, Value: {image_size}")
+   914	                        logger.debug(f"Checking state BEFORE 'if can_export'. Value(can_export): {can_export}")
+   915	                        # --->>> END OF ADDED LOGGING <<<---
+   916	
+   917	                        # Prepare item for export using the VISUALIZED image
+   918	                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+   919	                        safe_image_id = image_info['id'].replace('/', '_')
+   920	                        export_name = f"{place_name}_{safe_image_id}_{timestamp}" if place_name else f"metadata_export_{safe_image_id}_{timestamp}"
+   921	
+   922	                        # --- Prepare export_item dictionary ---
+   923	                        export_item = {
+   924	                            "image": vis_image,          # <--- KEY CHANGE: Use the visualized image
+   925	                            "scale": scale,              # Use the requested scale
+   926	                            "region": image_region,      # Use the relevant region
+   927	                            "export_name": export_name,
+   928	                            "size": image_size,          # Store estimated size for checks
+   929	                            # --- Pass export configurations ---
+   930	                            "fileFormat": export_format if export_format else "GeoTIFF", # Use requested or default
+   931	                            "folder": export_destination if export_destination else "GEE_Images", # Specify folder
+   932	                            "maxPixels": 1e13, # Default, consider making configurable
+   933	                            # Add CRS if specified for the export
+   934	                            "crs": crs if crs else "EPSG:4326"
+   935	                        }
+   936	
+   937	                        # Add custom export parameters if provided, potentially overriding defaults
+   938	                        if export_params:
+   939	                           export_item.update(export_params) # Merge/override with user-defined export params
+   940	
+   941	                        images_to_export.append(export_item)
+   942	                        logger.info(f"Queued {image_info['id']} for Drive export as '{export_name}.{export_item['fileFormat']}'")
+   943	                        full_res_url = None # Ensure URL is None as we are exporting instead
+   944	                    else:
+   945	                        logger.warning(f"Image {image_info['id']} too large for download, but export skipped (insufficient storage or export disabled).")
+   946	                        full_res_url = None # No URL if too large and not exporting
+   947	                else:
+   948	                     # Handle other GEE errors during URL generation if necessary
+   949	                     logger.warning(f"Non-size related EEException during URL generation for {image_info['id']}: {error_str}")
+   950	                     full_res_url = None # No URL on other errors either
+   951	
+   952	            except Exception as url_gen_error:
+   953	                 logger.error(f"❌ Unexpected error generating download URL for {image_info['id']}: {url_gen_error}")
+   954	                 full_res_url = None # Ensure URL is None on unexpected errors
+   955	
+   956	
+   957	            # ✅ Thumbnail preview (should still work even if full-res is too large)
+   958	            preview_url = None
+   959	            try:
+   960	                preview_dimensions = export_dimensions // 4 if isinstance(export_dimensions, int) else 960 # Smaller dimensions for preview
+   961	                preview_params = {
+   962	                    **vis_params, # Use the same visualization parameters
+   963	                    "region": image_region,
+   964	                    "dimensions": preview_dimensions
+   965	                }
+   966	                # Use the ORIGINAL ee_image_selected for getThumbURL, as it's generally more reliable
+   967	                # and doesn't require the potentially large vis_image to be computed twice if URL fails.
+   968	                preview_url = ee_image_selected.getThumbURL(preview_params)
+   969	            except Exception as thumb_err:
+   970	                logger.warning(f"⚠️ Could not generate preview thumbnail for {image_info['id']}: {thumb_err}")
+   971	
+   972	            # Download and encode preview image if URL was generated
+   973	            if preview_url:
+   974	                try:
+   975	                    response = requests.get(preview_url, timeout=30) # Added timeout
+   976	                    response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+   977	                    if response.status_code == 200:
+   978	                        logger.debug(f"Successfully downloaded and encoded preview for {image_info['id']}")
+   979	                    else:
+   980	                        logger.warning(f"Failed to download preview image for {image_info['id']}. Status code: {response.status_code}")
+   981	                except requests.exceptions.RequestException as req_err:
+   982	                    logger.warning(f"⚠️ Request failed for preview thumbnail {image_info['id']}: {req_err}")
+   983	                except Exception as enc_err:
+   984	                     logger.warning(f"⚠️ Error encoding preview image for {image_info['id']}: {enc_err}")
+   985	
+   986	                # Correctly indented except block for the outer try/except handling general image processing errors
+   987	                except Exception as other_error:
+   988	                    logger.error(f"Unexpected error during processing for {image_info['id']}: {other_error}")
+   989	                    # Ensure essential metadata fields are still populated even on error
+   990	                    bounds_info = bounds_info if 'bounds_info' in locals() else None # Keep bounds if already fetched
+   991	
+   992	            # Build metadata object (this was already correctly placed outside the inner try/except)
+   993	            metadata_obj = {
+   994	                "id": image_info["id"],
+   995	                "date": ee.Date(image_info["properties"]["system:time_start"]).format("YYYY-MM-dd").getInfo(),
+   996	                "cloudCover": image_info["properties"].get("CLOUDY_PIXEL_PERCENTAGE", None),
+   997	                "bounds": bounds_info,
+   998	                "fullResUrl": full_res_url,
+   999	                "previewUrl": preview_url, # Keep the URL for reference if needed
+  1000	                "exportInfo": export_info,
+  1001	                "size": image_size
+  1002	            }
+  1003	            
+  1004	            # Add detailed metrics if requested
+  1005	            if detailed_metrics:
+  1006	                metadata_obj["properties"] = image_info["properties"]
+  1007	                if analysis_results:
+  1008	                    metadata_obj["analysisResults"] = analysis_results
+  1009	                if histogram_results:
+  1010	                    metadata_obj["histogram"] = histogram_results
+  1011	                if zonal_stats_results:
+  1012	                    metadata_obj["zonalStats"] = zonal_stats_results
+  1013	            
+  1014	            processed_images.append(metadata_obj)
+  1015	
+  1016	        # Handle exports
+  1017	        if can_export and total_export_size > available_storage:
+  1018	            logger.warning(f"Total estimated export size ({total_export_size / 1024 / 1024:.2f} MB) exceeds available storage "
+  1019	                        f"({available_storage / 1024 / 1024:.2f} MB). Skipping exports.")
+  1020	            can_export = False # Prevent export initiation
+  1021	
+  1022	        export_results = [] # To store results from export_to_drive calls
+  1023	        if can_export:
+  1024	                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+  1025	                        safe_image_id = image_info['id'].replace('/', '_')
+  1026	                        base_export_name = place_name if place_name else "metadata_export"
+  1027	                        export_name = f"{base_export_name}_{safe_image_id}_{timestamp}"
+  1028	                        try:
+  1029	                            # Step 1: Create dict with only standard types (NO float, NO GEE objects yet)
+  1030	                            export_item = {
+  1031	                                "export_name": export_name,
+  1032	                                "size": image_size,
+  1033	                                "scale": scale,
+  1034	                                "fileFormat": export_format if export_format else "GeoTIFF",
+  1035	                                "folder": export_destination if export_destination else "GEE_Images",
+  1036	                            }
+  1037	
+  1038	                            # Step 2: Add the float
+  1039	                            export_item["maxPixels"] = 1e13
+  1040	
+  1041	                            # Step 3: Add CRS (standard type)
+  1042	                            if crs:
+  1043	                                export_item["crs"] = crs
+  1044	
+  1045	                            # Step 4: Add GEE Geometry object
+  1046	                            export_item["region"] = image_region
+  1047	
+  1048	                            # Step 5: Add GEE Image object
+  1049	                            export_item["image"] = vis_image
+  1050	
+  1051	                            # Step 6: Handle export_params (Dictionary update)
+  1052	                            if export_params:
+  1053	                                if isinstance(export_params, dict):
+  1054	                                    export_item.update(export_params)
+  1055	                                else:
+  1056	                                    logger.warning(f"Ignoring non-dictionary 'export_params': {type(export_params)}")
+  1057	
+  1058	                            images_to_export.append(export_item)
+  1059	                        except Exception as diag_error:
+  1060	                            raise # Re-raise to see traceback
+  1061	
+  1062	                        full_res_url = None # Set outside block
+  1063	                        
+  1064	        else:
+  1065	            logger.warning(f"Non-size related EEException during URL generation for {image_info['id']}: {error_str}")
+  1066	            full_res_url = None
+  1067	    
+  1068	        
+  1069	        # Prepare result
+  1070	        result = {
+  1071	        "images": processed_images,
+  1072	        "totalResults": len(processed_images),
+  1073	        # Include overall warnings or status messages
+  1074	        }
+  1075	        # Add warnings based on export status
+  1076	        if not can_export and len(images_to_export) > 0:
+  1077	            result["warning"] = f"Insufficient storage ({available_storage / 1024 / 1024:.2f}MB) for estimated export size ({total_export_size / 1024 / 1024:.2f}MB). Exports skipped."
+  1078	        elif len(images_to_export) > 0 and len(export_results) == len(images_to_export):
+  1079	            result["export_status"] = f"Initiated {len(export_results)} exports to Google Drive."
+  1080	        elif len(images_to_export) > 0 and len(export_results) < len(images_to_export):

@@ -12,6 +12,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderIcon from '@mui/icons-material/Folder';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import StorageIcon from '@mui/icons-material/Storage';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import HomeIcon from '@mui/icons-material/Home';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
@@ -85,6 +86,7 @@ export default function Header({ title }: HeaderProps) {
     { name: 'Home', href: '/', icon: HomeIcon },
     { name: 'Dashboard', href: '/dashboard', icon: DashboardIcon },
     { name: 'Projects', href: '/projects', icon: FolderIcon },
+    { name: 'Workflows', href: '/workflows', icon: AccountTreeIcon },
     { name: 'Analysis', href: '/analysis', icon: AnalyticsIcon },
     { name: 'Storage', href: '/storage', icon: StorageIcon },
   ];

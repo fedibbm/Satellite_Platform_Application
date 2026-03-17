@@ -1,0 +1,65 @@
+  1016	        # Handle exports
+  1017	        if can_export and total_export_size > available_storage:
+  1018	            logger.warning(f"Total estimated export size ({total_export_size / 1024 / 1024:.2f} MB) exceeds available storage "
+  1019	                        f"({available_storage / 1024 / 1024:.2f} MB). Skipping exports.")
+  1020	            can_export = False # Prevent export initiation
+  1021	
+  1022	        export_results = [] # To store results from export_to_drive calls
+  1023	        if can_export:
+  1024	                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+  1025	                        safe_image_id = image_info['id'].replace('/', '_')
+  1026	                        base_export_name = place_name if place_name else "metadata_export"
+  1027	                        export_name = f"{base_export_name}_{safe_image_id}_{timestamp}"
+  1028	                        try:
+  1029	                            # Step 1: Create dict with only standard types (NO float, NO GEE objects yet)
+  1030	                            export_item = {
+  1031	                                "export_name": export_name,
+  1032	                                "size": image_size,
+  1033	                                "scale": scale,
+  1034	                                "fileFormat": export_format if export_format else "GeoTIFF",
+  1035	                                "folder": export_destination if export_destination else "GEE_Images",
+  1036	                            }
+  1037	
+  1038	                            # Step 2: Add the float
+  1039	                            export_item["maxPixels"] = 1e13
+  1040	
+  1041	                            # Step 3: Add CRS (standard type)
+  1042	                            if crs:
+  1043	                                export_item["crs"] = crs
+  1044	
+  1045	                            # Step 4: Add GEE Geometry object
+  1046	                            export_item["region"] = image_region
+  1047	
+  1048	                            # Step 5: Add GEE Image object
+  1049	                            export_item["image"] = vis_image
+  1050	
+  1051	                            # Step 6: Handle export_params (Dictionary update)
+  1052	                            if export_params:
+  1053	                                if isinstance(export_params, dict):
+  1054	                                    export_item.update(export_params)
+  1055	                                else:
+  1056	                                    logger.warning(f"Ignoring non-dictionary 'export_params': {type(export_params)}")
+  1057	
+  1058	                            images_to_export.append(export_item)
+  1059	                        except Exception as diag_error:
+  1060	                            raise # Re-raise to see traceback
+  1061	
+  1062	                        full_res_url = None # Set outside block
+  1063	                        
+  1064	        else:
+  1065	            logger.warning(f"Non-size related EEException during URL generation for {image_info['id']}: {error_str}")
+  1066	            full_res_url = None
+  1067	    
+  1068	        
+  1069	        # Prepare result
+  1070	        result = {
+  1071	        "images": processed_images,
+  1072	        "totalResults": len(processed_images),
+  1073	        # Include overall warnings or status messages
+  1074	        }
+  1075	        # Add warnings based on export status
+  1076	        if not can_export and len(images_to_export) > 0:
+  1077	            result["warning"] = f"Insufficient storage ({available_storage / 1024 / 1024:.2f}MB) for estimated export size ({total_export_size / 1024 / 1024:.2f}MB). Exports skipped."
+  1078	        elif len(images_to_export) > 0 and len(export_results) == len(images_to_export):
+  1079	            result["export_status"] = f"Initiated {len(export_results)} exports to Google Drive."
+  1080	        elif len(images_to_export) > 0 and len(export_results) < len(images_to_export):

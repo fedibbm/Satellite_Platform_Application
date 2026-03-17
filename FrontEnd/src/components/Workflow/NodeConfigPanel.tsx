@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { WorkflowNode } from '@/types/workflow';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import dynamic from 'next/dynamic';
+
+const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
 interface NodeConfigPanelProps {
   node: WorkflowNode | null;
@@ -14,6 +17,7 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
   const [config, setConfig] = useState<any>({});
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   useEffect(() => {
     if (node) {
@@ -135,13 +139,18 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Collection ID
                   </label>
-                  <input
-                    type="text"
-                    value={config.collection_id || ''}
+                  <select
+                    value={config.collection_id || 'COPERNICUS/S2_SR_HARMONIZED'}
                     onChange={(e) => updateConfig('collection_id', e.target.value)}
-                    placeholder="LANDSAT/LC08/C02/T1_L2"
                     className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
+                  >
+                    <option value="COPERNICUS/S2_SR_HARMONIZED">Sentinel-2 Surface Reflectance (Harmonized)</option>
+                    <option value="COPERNICUS/S2_HARMONIZED">Sentinel-2 Top of Atmosphere (Harmonized)</option>
+                    <option value="LANDSAT/LC08/C02/T1_L2">Landsat 8 Surface Reflectance</option>
+                    <option value="LANDSAT/LE07/C02/T1_L2">Landsat 7 Surface Reflectance</option>
+                    <option value="MODIS/061/MOD09GA">MODIS Surface Reflectance (Daily)</option>
+                    <option value="USGS/SRTMGL1_003">SRTM Digital Elevation Data (30m)</option>
+                  </select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -170,15 +179,88 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Region (GeoJSON)
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                    <span>Region (Draw on Map or Edit GeoJSON)</span>
+                    <div className="space-x-3">
+                      <button 
+                        type="button" 
+                        onClick={() => setIsMapExpanded(true)}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+                      >
+                        ⛶ Expand Map
+                      </button>
+                      {config.region && (
+                        <button 
+                          type="button" 
+                          onClick={() => updateConfig('region', '')}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Clear Region
+                        </button>
+                      )}
+                    </div>
                   </label>
+                  
+                  {isMapExpanded && (
+                    <div className="fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center p-4 sm:p-8">
+                      <div className="bg-white w-full h-full rounded-lg shadow-2xl flex flex-col flex-1 overflow-hidden">
+                        <div className="flex justify-between items-center p-4 border-b bg-gray-50 flex-shrink-0">
+                          <h3 className="text-lg font-bold text-gray-800">Select Region</h3>
+                          <button 
+                            type="button"
+                            onClick={() => setIsMapExpanded(false)} 
+                            className="px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 shadow flex items-center transition"
+                          >
+                            Done Selecting
+                          </button>
+                        </div>
+                        <div className="flex-1 w-full relative min-h-0 z-0">
+                          <Map
+                            onShapeCreated={(e: any) => {
+                              const geoJson = e.layer.toGeoJSON();
+                              const regionData = geoJson.geometry ? geoJson.geometry : geoJson;
+                              updateConfig('region', JSON.stringify(regionData, null, 2));
+                            }}
+                            onClearShape={() => updateConfig('region', '')}
+                            initialRegion={config.region ? (() => { 
+                              try { 
+                                const parsed = JSON.parse(config.region); 
+                                return parsed.type === 'Feature' ? parsed : { type: 'Feature', properties: {}, geometry: parsed };
+                              } catch { return null; } 
+                            })() : null}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isMapExpanded && (
+                  <div className="h-64 w-full mb-2 border border-gray-300 rounded overflow-hidden">
+                    <Map
+                      onShapeCreated={(e: any) => {
+                        const geoJson = e.layer.toGeoJSON();
+                        // Usually the API wants the geometry for GEE queries, or the whole Feature
+                        const regionData = geoJson.geometry ? geoJson.geometry : geoJson;
+                        updateConfig('region', JSON.stringify(regionData, null, 2));
+                      }}
+                      onClearShape={() => updateConfig('region', '')}
+                      initialRegion={config.region ? (() => { 
+                        try { 
+                          const parsed = JSON.parse(config.region); 
+                          return parsed.type === 'Feature' ? parsed : { type: 'Feature', properties: {}, geometry: parsed };
+                        } catch { 
+                          return null; 
+                        } 
+                      })() : null}
+                    />
+                  </div>
+                  )}
                   <textarea
                     value={config.region || ''}
                     onChange={(e) => updateConfig('region', e.target.value)}
                     placeholder='{"type":"Polygon","coordinates":[...]}'
-                    rows={3}
-                    className="w-full border border-gray-300 rounded px-3 py-2 font-mono text-sm"
+                    rows={4}
+                    className="w-full border border-gray-300 rounded px-3 py-2 font-mono text-xs"
                   />
                 </div>
 
