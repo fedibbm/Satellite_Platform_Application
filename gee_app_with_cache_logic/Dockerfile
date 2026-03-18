@@ -1,33 +1,39 @@
-# Use an official Python runtime as a parent image
-FROM python:3.12-slim
+FROM python:3.12-slim AS builder
 
-# Set environment variables
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip wheel --wheel-dir /wheels -r requirements.txt
+
+FROM python:3.12-slim AS runtime
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
 
-# Set working directory inside the container
 WORKDIR /app
 
-# Install system dependencies (if needed, e.g., for GEE or other packages)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
+COPY --from=builder /wheels /wheels
 COPY requirements.txt .
+RUN pip install --upgrade pip && pip install --no-index --find-links=/wheels -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --upgrade pip && pip install -r requirements.txt
-
-# Copy the rest of the application code
 COPY . .
 
-# Expose port if this is a FastAPI/HTTP app
 EXPOSE 5000
 
-# Default command: run app.py
 CMD ["python", "app.py"]
 

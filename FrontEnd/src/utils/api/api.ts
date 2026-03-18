@@ -10,7 +10,10 @@ interface ApiResponse<T = any> {
   error?: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  '/api';
 
 // Retry configuration
 const MAX_RETRIES = 3;
