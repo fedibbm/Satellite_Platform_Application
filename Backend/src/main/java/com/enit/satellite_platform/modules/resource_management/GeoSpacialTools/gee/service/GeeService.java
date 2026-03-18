@@ -177,6 +177,27 @@ public class GeeService {
         }
     }
 
+    public byte[] downloadFileBytes(String filePath) {
+        String url;
+        if (filePath.startsWith("/")) {
+            url = flaskBaseUrl + filePath;
+        } else {
+            url = flaskBaseUrl + "/" + filePath;
+        }
+        logger.info("Downloading file bytes from {}", url);
+        try {
+            ResponseEntity<byte[]> responseEntity = restTemplate.exchange(url, HttpMethod.GET, null, byte[].class);
+            if (responseEntity.getStatusCode().is2xxSuccessful()) {
+                return responseEntity.getBody();
+            } else {
+                throw new GeeProcessingException("Download failed with status: " + responseEntity.getStatusCode().value());
+            }
+        } catch (Exception e) {
+            logger.error("Failed to download file from {}", url, e);
+            throw new RuntimeException("Failed to download file from " + url + ": " + e.getMessage());
+        }
+    }
+
     // --- Validation and Helper Methods ---
 
     private void validateGeeRequest(ServiceRequest request) {

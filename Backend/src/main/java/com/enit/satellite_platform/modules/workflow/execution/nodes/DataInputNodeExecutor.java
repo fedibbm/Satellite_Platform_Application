@@ -22,6 +22,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Executor for data input nodes - loads data from project/image services
@@ -68,7 +74,7 @@ public class DataInputNodeExecutor implements NodeExecutor {
                     return NodeExecutionResult.success(loadSingleImage(config));
 
                 case "gee":
-                    return NodeExecutionResult.success(loadGeeData(config, node));
+                    return NodeExecutionResult.success(loadGeeData(config, node, context));
 
                 default:
                     return NodeExecutionResult.failure("Unknown data source: " + dataSource);
@@ -84,7 +90,7 @@ public class DataInputNodeExecutor implements NodeExecutor {
      * Load data from Google Earth Engine through the GeeService.
      * Expects configuration compatible with GeneralEarthEngineRequest2 in the Python service.
      */
-    private Map<String, Object> loadGeeData(Map<String, Object> config, WorkflowNode node) {
+    private Map<String, Object> loadGeeData(Map<String, Object> config, WorkflowNode node, NodeExecutionContext context) {
         if (geeService == null) {
             logger.error("GeeService bean is not available - cannot execute GEE data input");
             throw new IllegalStateException("GEE service is not configured on the backend");
@@ -135,6 +141,13 @@ public class DataInputNodeExecutor implements NodeExecutor {
 
         geeRequest.setParameters(parameters);
 
+        // If the intention is to download physical imagery instead of just metadata, override serviceType
+        String forceDownloadStr = String.valueOf(config.get("forceDownload"));
+        if ("true".equalsIgnoreCase(forceDownloadStr) || "download".equalsIgnoreCase(serviceType)) {
+            geeRequest.setServiceType("download");
+            serviceType = "download";
+        }
+
         logger.info("Calling GeeService for node {} with serviceType: {}", node.getId(), serviceType);
         ProcessingResponse response = geeService.processGeeRequest(geeRequest);
 
@@ -150,9 +163,57 @@ public class DataInputNodeExecutor implements NodeExecutor {
         Map<String, Object> result = new HashMap<>();
         result.put("status", response.getStatus());
         result.put("message", response.getMessage());
-        result.put("data", response.getData());
-        result.put("type", response.getType());
-        result.put("imageId", response.getImageId());
+
+        // Handling Physical File Downloads specifically!
+        if ("download".equalsIgnoreCase(serviceType) && response.getDownloadedFiles() != null && !response.getDownloadedFiles().isEmpty()) {
+            try {
+                String workflowProjectId = (String) config.get("projectId");
+                if (workflowProjectId == null && context.getGlobalVariables() != null) {
+                    workflowProjectId = (String) context.getGlobalVariables().get("projectId");
+                }
+                
+                if (workflowProjectId == null) {
+                    throw new IllegalArgumentException("Cannot register GEE downloaded image because no projectId is provided in config or context variables");
+                }
+
+                // Usually take the first file...
+                String exportedFilePath = response.getDownloadedFiles().get(0);
+
+                // Download the file bytes from python service
+                byte[] rawFile = geeService.downloadFileBytes(exportedFilePath);
+                logger.info("Downloaded file {} of size {} bytes from GEE Python Service", exportedFilePath, rawFile.length);
+
+                // Wrap in MultipartFile
+                ByteArrayMultipartFile multipartFile = new ByteArrayMultipartFile(
+                    rawFile,
+                    "gee_image",
+                    exportedFilePath.contains("/") ? exportedFilePath.substring(exportedFilePath.lastIndexOf('/') + 1) : exportedFilePath,
+                    "image/tiff"
+                );
+
+                // Prepare DTO
+                ImageDTO dto = new ImageDTO();
+                dto.setProjectId(workflowProjectId);
+                dto.setImageName("GEE_DOWNLOAD_" + System.currentTimeMillis());
+                dto.setFile(multipartFile);
+                dto.setFileSize(rawFile.length);
+
+                // Add physical file to ImageService
+                ImageDTO savedImage = imageService.addImage(dto);
+
+                // Pass new registered Local ImageId into node output!
+                result.put("imageId", savedImage.getImageId());
+                result.put("importedFile", exportedFilePath); // Just for metadata
+
+            } catch (Exception e) {
+                logger.error("Failed to physicalize GEE download", e);
+                throw new RuntimeException("Error transferring GEE file into internal storage: " + e.getMessage());
+            }
+        } else {
+            result.put("data", response.getData());
+            result.put("type", response.getType());
+            result.put("imageId", response.getImageId());
+        }
 
         return result;
     }
@@ -305,5 +366,64 @@ public class DataInputNodeExecutor implements NodeExecutor {
             java.util.List.of(),
             java.util.List.of("projectData", "imageData")
         );
+    }
+
+    /**
+     * Inner class to represent a downloaded file as a MultipartFile.
+     */
+    private static class ByteArrayMultipartFile implements MultipartFile {
+        private final byte[] content;
+        private final String name;
+        private final String originalFilename;
+        private final String contentType;
+
+        public ByteArrayMultipartFile(byte[] content, String name, String originalFilename, String contentType) {
+            this.content = content;
+            this.name = name;
+            this.originalFilename = originalFilename;
+            this.contentType = contentType;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public String getOriginalFilename() {
+            return originalFilename;
+        }
+
+        @Override
+        public String getContentType() {
+            return contentType;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return content == null || content.length == 0;
+        }
+
+        @Override
+        public long getSize() {
+            return content.length;
+        }
+
+        @Override
+        public byte[] getBytes() throws IOException {
+            return content;
+        }
+
+        @Override
+        public InputStream getInputStream() throws IOException {
+            return new ByteArrayInputStream(content);
+        }
+
+        @Override
+        public void transferTo(File dest) throws IOException, IllegalStateException {
+            try (FileOutputStream fos = new FileOutputStream(dest)) {
+                fos.write(content);
+            }
+        }
     }
 }

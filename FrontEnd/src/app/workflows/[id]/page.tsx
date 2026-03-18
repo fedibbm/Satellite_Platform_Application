@@ -179,6 +179,22 @@ export default function WorkflowDetailPage() {
     }
   };
 
+  const handleLogConfig = () => {
+    const rawPayload = { workflow, nodes, edges };
+    const scrubbedPayload = JSON.parse(JSON.stringify(rawPayload, (key, value) => {
+      if (typeof value === 'string') {
+        if (value.startsWith('data:image/') && value.length > 500) {
+          return `[BASE64 IMAGE TRUNCATED - Size: ${(value.length / 1024).toFixed(2)} KB]`;
+        }
+        if (value.length > 10000) {
+          return `[VERY LONG STRING TRUNCATED - Length: ${value.length} chars]`;
+        }
+      }
+      return value;
+    }));
+    console.log('Workflow Configuration:', scrubbedPayload);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -221,7 +237,7 @@ export default function WorkflowDetailPage() {
               Save
             </button>
             <button
-              onClick={() => console.log('Workflow Configuration:', { workflow, nodes, edges })}
+              onClick={handleLogConfig}
               className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
             >
               Log Config
