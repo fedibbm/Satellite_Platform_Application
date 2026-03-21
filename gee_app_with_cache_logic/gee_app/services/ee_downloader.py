@@ -1,5 +1,6 @@
 import ee
 import os
+import zipfile
 import time
 import requests
 from datetime import datetime
@@ -128,6 +129,8 @@ def download_ee_images(request: GeneralEarthEngineRequest2, output_dir: str = "e
                 'name': filename,
                 'scale': request.scale if request.scale else 30,
                 'crs': request.crs if request.crs else 'EPSG:4326',
+                'format': 'GEO_TIFF',
+                'filePerBand': False,
             }
             
             # Add region if specified
@@ -157,6 +160,31 @@ def download_ee_images(request: GeneralEarthEngineRequest2, output_dir: str = "e
                             # filter out keep-alive new chunks
                             if chunk:
                                 f.write(chunk)
+                    if zipfile.is_zipfile(filepath):
+
+                        logger.info(f"Downloaded file {filepath} is a ZIP archive, extracting...") 
+
+                        extracted_tif = None
+
+                        with zipfile.ZipFile(filepath, "r") as zip_ref:
+
+                            for file_in_zip in zip_ref.namelist():
+
+                                if file_in_zip.endswith(".tif"):
+
+                                    zip_ref.extract(file_in_zip, output_dir)
+
+                                    extracted_tif = os.path.join(output_dir, file_in_zip)
+
+                                    break
+
+                        if extracted_tif:
+
+                            os.remove(filepath)
+
+                            os.rename(extracted_tif, filepath)
+
+                            logger.info(f"Successfully extracted TIF to {filepath}")
                     download_paths.append(filepath)
                     success = True
                     logger.info(f"Successfully downloaded image {idx + 1} to {filepath}")

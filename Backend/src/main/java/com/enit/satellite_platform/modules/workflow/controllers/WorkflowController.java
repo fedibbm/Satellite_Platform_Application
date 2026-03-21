@@ -106,6 +106,24 @@ public class WorkflowController {
         }
     }
 
+    @PostMapping("/{id}/copy")
+    @Operation(summary = "Copy an existing workflow")
+    public ResponseEntity<GenericResponse<WorkflowDTO>> copyWorkflow(
+            @PathVariable String id,
+            @RequestParam(required = false) String targetProjectId) {
+        try {
+            String userEmail = getCurrentUserEmail();
+            // Call service copy method
+            WorkflowDTO workflow = workflowService.copyWorkflow(id, targetProjectId, userEmail);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new GenericResponse<>("success", "Workflow copied successfully", workflow));
+        } catch (Exception e) {
+            logger.error("Error copying workflow: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new GenericResponse<>("error", e.getMessage(), null));
+        }
+    }
+
     @PutMapping("/{id}")
     @Operation(summary = "Update a workflow")
     public ResponseEntity<GenericResponse<WorkflowDTO>> updateWorkflow(

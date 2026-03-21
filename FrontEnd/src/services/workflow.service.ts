@@ -55,5 +55,13 @@ export const workflowService = {
   async getWorkflowExecutions(workflowId: string): Promise<WorkflowExecution[]> {
     const response = await httpClient.get(`/api/workflows/${workflowId}/executions`);
     return response?.data || [];
+  },
+
+  async copyWorkflow(id: string, targetProjectId: string): Promise<Workflow> {
+    const response = await httpClient.post(`/api/workflows/${id}/copy?targetProjectId=${targetProjectId}`, {});
+    if (!response?.data) {
+      throw new Error('Failed to copy workflow');
+    }
+    return response.data;
   }
 };

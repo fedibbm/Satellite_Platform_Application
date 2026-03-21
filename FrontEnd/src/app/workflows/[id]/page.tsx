@@ -5,6 +5,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { workflowService } from '@/services/workflow.service';
 import { Workflow, WorkflowNode, WorkflowEdge } from '@/types/workflow';
 import { wsService } from '@/services/websocketService';
+import { getAllProjects, getProject } from '@/services/projects.service';
+import { Project } from '@/types/api';
+import Modal from '@/components/Modal';
 import WorkflowCanvas from '@/components/Workflow/WorkflowCanvas';
 import NodePalette from '@/components/Workflow/NodePalette';
 import NodeConfigPanel from '@/components/Workflow/NodeConfigPanel';
@@ -14,6 +17,7 @@ import {
   ClockIcon,
   DocumentTextIcon,
   Cog6ToothIcon,
+  DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
 
 export default function WorkflowDetailPage() {
@@ -26,7 +30,12 @@ export default function WorkflowDetailPage() {
   const [activeTab, setActiveTab] = useState<'canvas' | 'versions' | 'executions' | 'settings'>('canvas');
   const [nodes, setNodes] = useState<WorkflowNode[]>([]);
   const [edges, setEdges] = useState<WorkflowEdge[]>([]);
-  const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
+    const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [copyTargetProjectId, setCopyTargetProjectId] = useState<string>('');
+  const [copying, setCopying] = useState(false);
+  const [activeProjectName, setActiveProjectName] = useState<string>('Loading...');
 
   const subscriptionRef = useRef<any>(null);
 
@@ -89,6 +98,14 @@ export default function WorkflowDetailPage() {
       const data = await workflowService.getWorkflowById(workflowId);
       setWorkflow(data);
       
+      if (data.projectId) {
+        getProject(data.projectId)
+          .then(p => setActiveProjectName(p.projectName || p.name || 'Unknown Project'))
+          .catch(() => setActiveProjectName('Unknown/Deleted Project'));
+      } else {
+        setActiveProjectName('Unassigned');
+      }
+
       // Load current version nodes and edges
       const currentVersion = data.versions.find(v => v.version === data.currentVersion);
       if (currentVersion) {
@@ -151,6 +168,36 @@ export default function WorkflowDetailPage() {
     } catch (error) {
       console.error('Error saving workflow:', error);
       alert('Failed to save workflow');
+    }
+  };
+
+
+  const handleOpenCopyModal = async () => {
+    setIsCopyModalOpen(true);
+    try {
+      const response = await getAllProjects(0, 100);
+      setProjects(response.content || []);
+      if (response.content?.length > 0) {
+        if (response.content[0].id) setCopyTargetProjectId(response.content[0].id);
+      }
+    } catch (e) {
+      console.error('Failed to load projects for copy');
+    }
+  };
+
+  const handleCopyWorkflow = async () => {
+    if (!copyTargetProjectId) return;
+    setCopying(true);
+    try {
+      const copied = await workflowService.copyWorkflow(workflowId, copyTargetProjectId);
+      alert('Workflow copied successfully!');
+      setIsCopyModalOpen(false);
+      router.push(`/workflows/${copied.id}`);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to copy workflow');
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -224,8 +271,13 @@ export default function WorkflowDetailPage() {
               <ArrowLeftIcon className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{workflow.name}</h1>
-              <p className="text-sm text-gray-500">{workflow.description}</p>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900">{workflow.name}</h1>
+                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                  Project: {activeProjectName}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">{workflow.description}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -241,6 +293,14 @@ export default function WorkflowDetailPage() {
               className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
             >
               Log Config
+            </button>
+
+            <button
+              onClick={handleOpenCopyModal}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <DocumentDuplicateIcon className="h-5 w-5" />
+              Duplicate
             </button>
             <button
               onClick={handleExecute}
@@ -438,6 +498,37 @@ export default function WorkflowDetailPage() {
           </div>
         )}
       </div>
+
+      
+      <Modal
+        open={isCopyModalOpen}
+        onClose={() => !copying && setIsCopyModalOpen(false)}
+        title="Duplicate Workflow"
+        actions={[
+          { label: 'Cancel', onClick: () => setIsCopyModalOpen(false), disabled: copying, color: 'inherit' },
+          { label: copying ? 'Copying...' : 'Copy', onClick: handleCopyWorkflow, disabled: copying || !copyTargetProjectId, color: 'primary', variant: 'contained' }
+        ]}
+        content={(
+          <div className="p-4">
+            <p className="mb-4 text-sm text-gray-600">Select a project to copy this workflow to.</p>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Target Project *
+            </label>
+            <select
+              value={copyTargetProjectId}
+              onChange={(e) => setCopyTargetProjectId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              disabled={copying || projects.length === 0}
+            >
+              <option value="" disabled>Select a project</option>
+              {projects.map(p => (
+                <option key={p.id || p._id} value={p.id || p._id}>{p.projectName || p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      />
+
     </div>
   );
 }
