@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -31,6 +31,7 @@ const nodeTypes = {
 };
 
 interface WorkflowCanvasProps {
+  workflowId?: string;
   initialNodes?: WorkflowNodeType[];
   initialEdges?: WorkflowEdgeType[];
   onNodesChange?: (nodes: WorkflowNodeType[]) => void;
@@ -40,6 +41,7 @@ interface WorkflowCanvasProps {
 }
 
 export default function WorkflowCanvas({
+  workflowId = 'new',
   initialNodes = [],
   initialEdges = [],
   onNodesChange,
@@ -59,6 +61,43 @@ export default function WorkflowCanvas({
   useEffect(() => {
     setEdges(initialEdges as Edge[]);
   }, [initialEdges, setEdges]);
+
+  // Auto-Save Draft to LocalStorage
+  const draftKey = `workflow_draft_${workflowId}`;
+  
+  useEffect(() => {
+    // Only auto-save if not read-only and we actually have nodes
+    if (!readOnly && nodes.length > 0) {
+      const draft = {
+        nodes,
+        edges,
+        timestamp: new Date().toISOString()
+      };
+      // Debounce slightly to avoid aggressive writing
+      const timer = setTimeout(() => {
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [nodes, edges, readOnly, draftKey]);
+
+  // Optionally load draft on mount
+  useEffect(() => {
+    if (!readOnly && initialNodes.length === 0) {
+      const savedDraft = localStorage.getItem(draftKey);
+      if (savedDraft) {
+        try {
+          const { nodes: draftNodes, edges: draftEdges } = JSON.parse(savedDraft);
+          if (draftNodes && draftNodes.length > 0) {
+             setNodes(draftNodes);
+             setEdges(draftEdges || []);
+          }
+        } catch(e) {
+          console.error("Failed to load workflow draft", e);
+        }
+      }
+    }
+  }, [readOnly, initialNodes.length, draftKey, setNodes, setEdges]);
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {

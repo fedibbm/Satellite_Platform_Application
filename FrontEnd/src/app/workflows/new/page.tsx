@@ -6,6 +6,7 @@ import { workflowService } from '@/services/workflow.service';
 import { getAllProjects } from '@/services/projects.service';
 import { Project } from '@/types/api';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { Snackbar, Alert } from '@mui/material';
 
 export default function NewWorkflowPage() {
   const router = useRouter();
@@ -15,6 +16,8 @@ export default function NewWorkflowPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingProjects, setFetchingProjects] = useState(true);
+  const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
+  const handleCloseToast = () => setToast({ ...toast, open: false });
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -38,12 +41,12 @@ export default function NewWorkflowPage() {
     e.preventDefault();
     
     if (!name.trim()) {
-      alert('Please enter a workflow name');
+      setToast({ open: true, message: 'Please enter a workflow name', severity: 'warning' });
       return;
     }
     
     if (!projectId) {
-      alert('Please select a project for this workflow');
+      setToast({ open: true, message: 'Please select a project for this workflow', severity: 'warning' });
       return;
     }
 
@@ -67,7 +70,7 @@ export default function NewWorkflowPage() {
     } catch (error) {
       console.error('Error creating workflow:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create workflow';
-      alert(errorMessage);
+      setToast({ open: true, message: errorMessage, severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -162,6 +165,11 @@ export default function NewWorkflowPage() {
           </form>
         </div>
       </div>
+      <Snackbar open={toast.open} autoHideDuration={6000} onClose={handleCloseToast} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Alert onClose={handleCloseToast} severity={toast.severity} sx={{ width: '100%' }}>
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { workflowService } from '@/services/workflow.service';
 import { Workflow, WorkflowStatus } from '@/types/workflow';
+import { Snackbar, Alert, CircularProgress } from '@mui/material';
 import {
   PlusIcon,
   PlayIcon,
@@ -25,6 +26,10 @@ export default function WorkflowsPage() {
   const [templates, setTemplates] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'workflows' | 'templates'>('workflows');
+  const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
+  const [executingId, setExecutingId] = useState<string | null>(null);
+
+  const handleCloseToast = () => setToast({ ...toast, open: false });
 
   useEffect(() => {
     loadData();
@@ -58,12 +63,26 @@ export default function WorkflowsPage() {
 
   const handleExecuteWorkflow = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    
+    // Pre-Flight Validation
+    const workflow = workflows.find(w => w.id === id);
+    if (workflow) {
+      const currentVer = workflow.versions?.find(v => v.version === workflow.currentVersion);
+      if (currentVer && (currentVer.nodes?.length === 0 || !currentVer.nodes)) {
+        setToast({ open: true, message: 'Cannot execute: Workflow has no nodes connected.', severity: 'error' });
+        return;
+      }
+    }
+
     try {
+      setExecutingId(id);
       await workflowService.executeWorkflow(id);
-      alert('Workflow execution started!');
+      setToast({ open: true, message: 'Workflow execution started successfully!', severity: 'success' });
     } catch (error) {
       console.error('Error executing workflow:', error);
-      alert('Failed to execute workflow');
+      setToast({ open: true, message: 'Failed to execute workflow.', severity: 'error' });
+    } finally {
+      setExecutingId(null);
     }
   };
 
@@ -115,10 +134,15 @@ export default function WorkflowsPage() {
           {workflow.status === 'ACTIVE' && !workflow.isTemplate && (
             <button
               onClick={(e) => handleExecuteWorkflow(e, workflow.id)}
-              className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              disabled={executingId === workflow.id}
+              className={`flex items-center gap-1 px-3 py-1 text-white rounded transition-colors ${executingId === workflow.id ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
-              <PlayIcon className="h-4 w-4" />
-              <span>Execute</span>
+              {executingId === workflow.id ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <PlayIcon className="h-4 w-4" />
+              )}
+              <span>{executingId === workflow.id ? 'Executing...' : 'Execute'}</span>
             </button>
           )}
         </div>
@@ -200,8 +224,15 @@ export default function WorkflowsPage() {
                   <WorkflowCard key={workflow.id} workflow={workflow} />
                 ))
               ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-gray-500">No workflows yet. Create your first workflow to get started!</p>
+                <div className="col-span-full text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
+                  <div className="mx-auto h-12 w-12 text-gray-400 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
+                    <RocketLaunchIcon className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No workflows yet</h3>
+                  <p className="text-gray-500 mb-4">Create your first automated processing pipeline to get started.</p>
+                  <button onClick={handleCreateWorkflow} className="inline-flex flex-col items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Create Workflow
+                  </button>
                 </div>
               )
             ) : (
@@ -218,6 +249,11 @@ export default function WorkflowsPage() {
           </div>
         )}
       </div>
+      <Snackbar open={toast.open} autoHideDuration={6000} onClose={handleCloseToast} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Alert onClose={handleCloseToast} severity={toast.severity} sx={{ width: '100%' }}>
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

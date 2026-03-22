@@ -8,6 +8,7 @@ import { wsService } from '@/services/websocketService';
 import { getAllProjects, getProject } from '@/services/projects.service';
 import { Project } from '@/types/api';
 import Modal from '@/components/Modal';
+import { Snackbar, Alert } from '@mui/material';
 import WorkflowCanvas from '@/components/Workflow/WorkflowCanvas';
 import NodePalette from '@/components/Workflow/NodePalette';
 import NodeConfigPanel from '@/components/Workflow/NodeConfigPanel';
@@ -26,8 +27,11 @@ export default function WorkflowDetailPage() {
   const workflowId = params?.id as string;
 
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [selectedExecution, setSelectedExecution] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'canvas' | 'versions' | 'executions' | 'settings'>('canvas');
+  const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
+  const handleCloseToast = () => setToast({ ...toast, open: false });
   const [nodes, setNodes] = useState<WorkflowNode[]>([]);
   const [edges, setEdges] = useState<WorkflowEdge[]>([]);
     const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
@@ -79,7 +83,7 @@ export default function WorkflowDetailPage() {
            loadWorkflow(); 
            
            if (message.status === 'COMPLETED' || message.status === 'FAILED') {
-               alert(`Workflow execution ${message.status}`);
+               setToast({ open: true, message: `Workflow execution ${message.status}`, severity: 'info' });
            }
         });
     }, 1000);
@@ -164,10 +168,10 @@ export default function WorkflowDetailPage() {
         workflowId,
         { nodes, edges, changelog: 'Updated workflow design' }
       );
-      alert('Workflow saved successfully!');
+      setToast({ open: true, message: 'Workflow saved successfully!', severity: 'success' });
     } catch (error) {
       console.error('Error saving workflow:', error);
-      alert('Failed to save workflow');
+      setToast({ open: true, message: 'Failed to save workflow', severity: 'error' });
     }
   };
 
@@ -190,12 +194,12 @@ export default function WorkflowDetailPage() {
     setCopying(true);
     try {
       const copied = await workflowService.copyWorkflow(workflowId, copyTargetProjectId);
-      alert('Workflow copied successfully!');
+      setToast({ open: true, message: 'Workflow copied successfully!', severity: 'success' });
       setIsCopyModalOpen(false);
       router.push(`/workflows/${copied.id}`);
     } catch (error) {
       console.error(error);
-      alert('Failed to copy workflow');
+      setToast({ open: true, message: 'Failed to copy workflow', severity: 'error' });
     } finally {
       setCopying(false);
     }
@@ -207,7 +211,7 @@ export default function WorkflowDetailPage() {
       const execResp = await workflowService.executeWorkflow(workflowId);
       console.log(`[Workflow Debug] Execution Trigger Response API:`, execResp);
       
-      alert('Workflow execution started! (Listening for real-time updates)');
+      setToast({ open: true, message: 'Workflow execution started! (Listening for real-time updates)', severity: 'success' });
       loadWorkflow(); // Reload to show new execution
       
       // Attempt to subscribe using returned execution ID if available
@@ -222,7 +226,7 @@ export default function WorkflowDetailPage() {
       }
     } catch (error) {
       console.error('Error executing workflow:', error);
-      alert('Failed to execute workflow');
+      setToast({ open: true, message: 'Failed to execute workflow', severity: 'error' });
     }
   };
 
@@ -402,8 +406,12 @@ export default function WorkflowDetailPage() {
                 {workflow.executions.map((execution) => (
                   <div
                     key={execution.id}
-                    className="bg-white rounded-lg p-4 border border-gray-200"
+                    onClick={() => setSelectedExecution(execution)}
+                    className="bg-white rounded-lg p-4 border border-gray-200 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all group relative"
                   >
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-xs text-blue-600 font-medium transition-opacity">
+                      View Results & Logs &rarr;
+                    </div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-semibold">Execution {execution.id}</span>
                       <span
@@ -527,6 +535,154 @@ export default function WorkflowDetailPage() {
             </select>
           </div>
         )}
+      />
+
+      {/* Execution Details Modal */}
+      <Modal
+        open={!!selectedExecution}
+        onClose={() => setSelectedExecution(null)}
+        title={`Execution Details: ${selectedExecution?.id}`}
+        maxWidth="lg"
+        content={
+          selectedExecution ? (
+            <div className="space-y-6 text-sm py-2">
+              <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div>
+                  <span className="font-semibold block text-gray-700">Status</span>
+                  <span className={`inline-flex px-2 py-1 mt-1 text-xs rounded font-medium ${
+                    selectedExecution.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                    selectedExecution.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                    selectedExecution.status === 'RUNNING' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'
+                  }`}>
+                    {selectedExecution.status}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-semibold block text-gray-700">Time Execution</span>
+                  <div className="text-gray-600 mt-1">
+                    <div>Started: {new Date(selectedExecution.startedAt).toLocaleString()}</div>
+                    {selectedExecution.completedAt && <div>Finished: {new Date(selectedExecution.completedAt).toLocaleString()}</div>}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold border-b pb-2 mb-3 text-gray-800">Results / Outputs</h3>
+                {selectedExecution.results && Object.keys(selectedExecution.results).length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {Object.entries(selectedExecution.results).map(([nodeId, result]: [string, any]) => {
+                      
+                      // Aggressive extraction of image URLs or Base64 data from backend responses
+                      let displayImage = null;
+                      
+                      // Case 1: Processing Node emits full base64 string
+                      if (result?.processedImageBase64 && !result.processedImageBase64.includes('truncated')) {
+                         displayImage = result.processedImageBase64.startsWith('data:image') 
+                           ? result.processedImageBase64 
+                           : `data:image/png;base64,${result.processedImageBase64}`;
+                      } 
+                      // Case 2: Direct URL properties
+                      else if (typeof result?.imageUrl === 'string') { displayImage = result.imageUrl; }
+                      else if (typeof result?.downloadUrl === 'string') { displayImage = result.downloadUrl; }
+                      else if (typeof result?.url === 'string') { displayImage = result.url; }
+                      // Case 3: GEE Node wraps data in response.data object
+                      else if (result?.data && typeof result.data === 'object' && !Array.isArray(result.data)) {
+                         if (typeof result.data.url === 'string') displayImage = result.data.url;
+                         else if (typeof result.data.downloadUrl === 'string') displayImage = result.data.downloadUrl;
+                      }
+                      
+                      return (
+                      <div key={nodeId} className="border border-gray-200 rounded-lg overflow-hidden flex flex-col bg-white hover:shadow-md transition-shadow">
+                        <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 text-xs font-semibold text-gray-700 flex justify-between items-center">
+                          <span>Node: {nodeId}</span>
+                        </div>
+                        
+                        <div className="p-3 flex-1 flex flex-col items-center justify-center bg-gray-50">
+                          {displayImage ? (
+                            <img 
+                              src={displayImage} 
+                              alt={`Output from ${nodeId}`}
+                              className="max-h-48 object-contain rounded drop-shadow-sm mb-2"
+                              onError={(e) => {
+                                // Fallback if image fails to load
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
+                          
+                          <div className={`text-xs text-gray-500 text-center w-full ${displayImage ? 'hidden' : ''}`}>
+                            <div className="bg-gray-900 text-green-400 p-3 rounded text-left overflow-x-auto w-full font-mono mt-0 max-h-48 overflow-y-auto">
+                              <pre>{JSON.stringify(result, null, 2)}</pre>
+                            </div>
+                          </div>
+                        </div>
+
+                        {result?.statistics && typeof result.statistics === 'object' && !Array.isArray(result.statistics) && (
+                          <div className="px-3 pb-3 bg-gray-50">
+                            <h4 className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider text-center">Statistics</h4>
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+                              {Object.entries(result.statistics).map(([key, val]: [string, any]) => (
+                                <div key={key} className="bg-white p-2 border border-gray-200 rounded justify-between flex flex-col md:flex-row items-center gap-1">
+                                  <span className="text-gray-500 capitalize">{key}</span>
+                                  <span className="font-mono font-medium text-gray-800">
+                                    {typeof val === 'number' ? Number(val.toFixed(4)) : String(val)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                         {displayImage && (
+                          <div className="p-2 border-t border-gray-100 bg-white flex justify-center">
+                            <a 
+                              href={displayImage} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              download={`result_${nodeId}.png`}
+                              className="text-xs text-blue-600 hover:text-blue-800 hover:underline px-2 py-1 flex items-center gap-1"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                              View / Download 
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )})}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 italic p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
+                    No results produced by this execution yet.
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold border-b pb-2 mb-3 text-gray-800">Execution Logs</h3>
+                {selectedExecution.logs && selectedExecution.logs.length > 0 ? (
+                  <div className="bg-gray-900 rounded-lg p-4 overflow-y-auto max-h-96 font-mono text-xs space-y-1 shadow-inner">
+                    {selectedExecution.logs.map((log: any, idx: number) => (
+                      <div key={idx} className={`flex gap-3 ${
+                        log.level === 'ERROR' ? 'text-red-400' :
+                        log.level === 'WARNING' ? 'text-yellow-400' : 'text-gray-300'
+                      }`}>
+                        <span className="text-gray-500 whitespace-nowrap">[{new Date(log.timestamp).toLocaleTimeString()}]</span> 
+                        <span className="font-bold whitespace-nowrap">[{log.level}]</span> 
+                        <span className="break-all whitespace-pre-wrap">{log.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 italic p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">No logs recorded.</div>
+                )}
+              </div>
+            </div>
+          ) : <></>
+        }
+        actions={[
+          { label: 'Close', onClick: () => setSelectedExecution(null), color: 'inherit', variant: 'outlined' }
+        ]}
       />
 
     </div>
