@@ -51,7 +51,7 @@ This document outlines the step-by-step plan to migrate the Satellite Platform A
   - Deploy via Azure CLI.
   - Inject MongoDB, RabbitMQ, Redis URIs, and Python internal URLs.
   - Verify `/actuator/health`.
-- [ ] **4.3 Deploy Next.js Frontend:**
+- [ ] **4.3 Deploy Next.js Frontend:*
   - Build with the correct `NEXT_PUBLIC_API_BASE_URL` pointing to the Azure Backend URL.
   - Deploy container.
   - Setup CORS on Backend to allow the Azure Frontend URL.
