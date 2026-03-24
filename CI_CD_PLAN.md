@@ -5,7 +5,7 @@ This document outlines the step-by-step plan to migrate the Satellite Platform A
 ## Phase 1: Externalize Stateful Services (SaaS Migration)
 **Goal:** Move databases and message brokers out of local Docker so they are accessible from anywhere.
 
-- [ ] **1.1 MongoDB Atlas:**
+- [ ] **1.1 MongoDB Atlas:*
   - Create a free cluster on MongoDB Atlas.
   - Whitelist IP addresses (allow all `0.0.0.0/0` for development, or specific Azure IPs later).
   - Update `.env.local` / `docker-compose.yml` to test the Atlas URI locally.
