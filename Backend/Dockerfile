@@ -1,18 +1,6 @@
-# Multi-stage build for optimized Spring Boot container
-# Stage 1: Build
-FROM maven:3.9-eclipse-temurin-17-alpine AS build
-
-WORKDIR /app
-
-# Copy pom.xml and download dependencies (for better caching)
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-
-# Copy source code and build
-COPY src ./src
-RUN mvn clean package -DskipTests
-
-# Stage 2: Runtime
+# Fast runtime-only image build.
+# Build the jar first on host/CI:
+#   ./mvnw -DskipTests clean package
 FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
@@ -22,8 +10,8 @@ RUN mkdir -p /app/upload-dir /app/logs /app/tmp && \
     addgroup -S spring && adduser -S spring -G spring && \
     chown -R spring:spring /app
 
-# Copy the JAR from build stage
-COPY --from=build /app/target/*.jar app.jar
+# Copy prebuilt JAR from host build context
+COPY target/*.jar app.jar
 
 # Use non-root user
 USER spring:spring

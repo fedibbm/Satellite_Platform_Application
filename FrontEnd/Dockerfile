@@ -21,13 +21,9 @@ COPY . .
 
 # Build arguments for environment variables
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
-ARG NEXT_PUBLIC_GEE_API_URL=http://localhost:5000
-ARG NEXT_PUBLIC_IMAGE_API_URL=http://localhost:8000
 
 # Set environment variables for build
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
-    NEXT_PUBLIC_GEE_API_URL=$NEXT_PUBLIC_GEE_API_URL \
-    NEXT_PUBLIC_IMAGE_API_URL=$NEXT_PUBLIC_IMAGE_API_URL \
     NEXT_TELEMETRY_DISABLED=1
 
 # Build the application
