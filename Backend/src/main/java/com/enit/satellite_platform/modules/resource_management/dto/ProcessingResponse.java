@@ -26,7 +26,9 @@ public class ProcessingResponse {
     @JsonProperty("image_id")
     private String imageId;
     
-
+    @JsonProperty("downloaded_files")
+    private java.util.List<String> downloadedFiles;
+    
     public ProcessingResponse(String status,String message) {
         this.status = status;
         this.message = message;

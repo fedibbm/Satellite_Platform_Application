@@ -145,9 +145,9 @@ async def calculate_index(
     # Parse metadata JSON
     try:
         params = json.loads(metadata)
-        red_band = params.get("redBand", 1)
-        nir_band = params.get("nirBand", 2)
-        blue_band = params.get("blueBand", 3)
+        red_band = params.get("redBand", params.get("red_band", 1))
+        nir_band = params.get("nirBand", params.get("nir_band", 2))
+        blue_band = params.get("blueBand", params.get("blue_band", 3))
         G = params.get("G", 2.5)
         C1 = params.get("C1", 6.0)
         C2 = params.get("C2", 7.5)
@@ -266,6 +266,7 @@ async def calculate_index(
                     pass
                     
     except Exception as e:
+        print(f"ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/download/{filename}")

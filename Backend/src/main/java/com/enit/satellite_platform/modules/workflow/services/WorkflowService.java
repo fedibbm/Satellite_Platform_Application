@@ -96,6 +96,50 @@ public class WorkflowService {
         return workflowMapper.toDTO(savedWorkflow);
     }
 
+    public WorkflowDTO copyWorkflow(String originalWorkflowId, String targetProjectId, String userEmail) {
+        logger.info("Copying workflow: {} to project: {} for user: {}", originalWorkflowId, targetProjectId, userEmail);
+
+        // Allow fetching templates OR user's own workflows
+        Workflow originalWorkflow = workflowRepository.findById(originalWorkflowId)
+            .orElseThrow(() -> new RuntimeException("Workflow not found"));
+
+        if (!originalWorkflow.getIsTemplate() && !originalWorkflow.getCreatedBy().equals(userEmail)) {
+            throw new RuntimeException("Access denied to workflow");
+        }
+
+        Workflow newWorkflow = new Workflow();
+        newWorkflow.setName(originalWorkflow.getName() + " (Copy)");
+        newWorkflow.setDescription(originalWorkflow.getDescription());
+        newWorkflow.setCreatedBy(userEmail);
+        newWorkflow.setIsTemplate(false);
+        newWorkflow.setStatus(WorkflowStatus.DRAFT);
+        newWorkflow.setCurrentVersion(originalWorkflow.getCurrentVersion());
+
+        if (targetProjectId != null && !targetProjectId.isEmpty()) {
+            newWorkflow.setProjectId(new ObjectId(targetProjectId));
+        }
+
+        // Copy all versions preserving history
+        List<WorkflowVersion> copiedVersions = new ArrayList<>();
+        for (WorkflowVersion pv : originalWorkflow.getVersions()) {
+            WorkflowVersion v = new WorkflowVersion();
+            v.setVersion(pv.getVersion());
+            v.setCreatedAt(pv.getCreatedAt());
+            v.setCreatedBy(pv.getCreatedBy());
+            v.setNodes(new ArrayList<>(pv.getNodes()));
+            v.setEdges(new ArrayList<>(pv.getEdges()));
+            v.setChangelog(pv.getChangelog() != null ? pv.getChangelog() : "Imported version");
+            copiedVersions.add(v);
+        }
+
+        newWorkflow.setVersions(copiedVersions);
+        newWorkflow.setCreatedAt(LocalDateTime.now());
+        newWorkflow.setUpdatedAt(LocalDateTime.now());
+
+        Workflow savedWorkflow = workflowRepository.save(newWorkflow);
+        return workflowMapper.toDTO(savedWorkflow);
+    }
+
     public WorkflowDTO updateWorkflow(String id, UpdateWorkflowRequest request, String userEmail) {
         logger.info("Updating workflow: {} for user: {}", id, userEmail);
 

@@ -73,7 +73,7 @@ public class OutputNodeExecutor implements NodeExecutor {
                             }
                             
                             Map<String, Object> dataMap = new HashMap<>();
-                            dataMap.put("processedImageBase64", base64.substring(0, Math.min(100, base64.length())) + "...(truncated for storage)");
+                            dataMap.put("processedImageBase64", base64);
                             // In real scenario, convert base64 to byte[] and save as file
                             req.setData(dataMap);
                             req.setStatus(com.enit.satellite_platform.modules.resource_management.image_management.entities.ProcessingStatus.COMPLETED);

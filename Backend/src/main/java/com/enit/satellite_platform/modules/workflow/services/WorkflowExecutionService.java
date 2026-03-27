@@ -160,6 +160,9 @@ public class WorkflowExecutionService {
     private void executeWorkflowNodes(WorkflowExecution execution, WorkflowVersion version) {
         logger.info("Executing workflow nodes for execution: {}", execution.getId());
 
+        Workflow workflow = workflowRepository.findById(execution.getWorkflowId()).orElse(null);
+        String workflowProjectId = (workflow != null && workflow.getProjectId() != null) ? workflow.getProjectId().toString() : null;
+
         List<WorkflowNode> nodes = version.getNodes();
         List<WorkflowEdge> edges = version.getEdges();
         
@@ -176,12 +179,18 @@ public class WorkflowExecutionService {
             return;
         }
 
+        // Initialize global variables with projectId if available
+        Map<String, Object> globalVariables = new HashMap<>();
+        if (workflowProjectId != null) {
+            globalVariables.put("projectId", workflowProjectId);
+        }
+
         // Create execution context
         NodeExecutionContext context = new NodeExecutionContext(
             execution.getWorkflowId(),
             execution.getId(),
             execution.getTriggeredBy(),
-            new HashMap<>(),
+            globalVariables,
             new HashMap<>()
         );
 

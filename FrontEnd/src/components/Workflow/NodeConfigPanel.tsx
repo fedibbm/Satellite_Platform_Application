@@ -131,6 +131,7 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   >
                     <option value="get_images">Get Images (metadata)</option>
+                    <option value="download">Download Images (physical)</option>
                     <option value="ndvi">NDVI Analysis</option>
                   </select>
                 </div>
@@ -178,8 +179,23 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
                   </div>
                 </div>
 
+                {config.serviceType === 'download' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Project ID (Required for Downloads)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter Project ID to assign image"
+                      value={config.projectId || ''}
+                      onChange={(e) => updateConfig('projectId', e.target.value)}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                )}
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                  <label className="text-sm font-medium text-gray-700 mb-1 flex justify-between">
                     <span>Region (Draw on Map or Edit GeoJSON)</span>
                     <div className="space-x-3">
                       <button 

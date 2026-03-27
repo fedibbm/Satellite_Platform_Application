@@ -1,21 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { workflowService } from '@/services/workflow.service';
+import { getAllProjects } from '@/services/projects.service';
+import { Project } from '@/types/api';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { Snackbar, Alert } from '@mui/material';
 
 export default function NewWorkflowPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [projectId, setProjectId] = useState<string>('');
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingProjects, setFetchingProjects] = useState(true);
+  const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
+  const handleCloseToast = () => setToast({ ...toast, open: false });
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await getAllProjects(0, 100);
+        setProjects(response.content || []);
+        if (response.content && response.content.length > 0) {
+          const firstProject = response.content[0];
+          setProjectId(firstProject.id || firstProject._id || '');
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      } finally {
+        setFetchingProjects(false);
+      }
+    };
+    fetchProjects();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name.trim()) {
-      alert('Please enter a workflow name');
+      setToast({ open: true, message: 'Please enter a workflow name', severity: 'warning' });
+      return;
+    }
+    
+    if (!projectId) {
+      setToast({ open: true, message: 'Please select a project for this workflow', severity: 'warning' });
       return;
     }
 
@@ -25,6 +56,7 @@ export default function NewWorkflowPage() {
         {
           name,
           description,
+          projectId,
           nodes: [],
           edges: [],
         }
@@ -38,7 +70,7 @@ export default function NewWorkflowPage() {
     } catch (error) {
       console.error('Error creating workflow:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create workflow';
-      alert(errorMessage);
+      setToast({ open: true, message: errorMessage, severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -57,7 +89,7 @@ export default function NewWorkflowPage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Create New Workflow</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Set up a new automated processing pipeline
+            Set up a new automated processing pipeline inside a project
           </p>
         </div>
 
@@ -76,6 +108,28 @@ export default function NewWorkflowPage() {
                 placeholder="e.g., Monthly NDVI Analysis"
                 required
               />
+            </div>
+            
+            <div>
+              <label htmlFor="projectId" className="block text-sm font-medium text-gray-700 mb-1">
+                Project *
+              </label>
+              <select
+                id="projectId"
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={fetchingProjects}
+                required
+              >
+                <option value="" disabled>Select a Project</option>
+                {projects.map((project) => (
+                  <option key={project.id || project._id} value={project.id || project._id}>
+                    {project.projectName || project.name}
+                  </option>
+                ))}
+              </select>
+              {fetchingProjects && <p className="mt-1 text-sm text-gray-500">Loading projects...</p>}
             </div>
 
             <div>
@@ -102,7 +156,7 @@ export default function NewWorkflowPage() {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !projectId}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 {loading ? 'Creating...' : 'Create Workflow'}
@@ -111,6 +165,11 @@ export default function NewWorkflowPage() {
           </form>
         </div>
       </div>
+      <Snackbar open={toast.open} autoHideDuration={6000} onClose={handleCloseToast} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Alert onClose={handleCloseToast} severity={toast.severity} sx={{ width: '100%' }}>
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

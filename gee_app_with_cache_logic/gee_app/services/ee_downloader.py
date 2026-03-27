@@ -1,5 +1,6 @@
 import ee
 import os
+import zipfile
 import time
 import requests
 from datetime import datetime
@@ -128,6 +129,8 @@ def download_ee_images(request: GeneralEarthEngineRequest2, output_dir: str = "e
                 'name': filename,
                 'scale': request.scale if request.scale else 30,
                 'crs': request.crs if request.crs else 'EPSG:4326',
+                'format': 'GEO_TIFF',
+                'filePerBand': False,
             }
             
             # Add region if specified
@@ -157,6 +160,31 @@ def download_ee_images(request: GeneralEarthEngineRequest2, output_dir: str = "e
                             # filter out keep-alive new chunks
                             if chunk:
                                 f.write(chunk)
+                    if zipfile.is_zipfile(filepath):
+
+                        logger.info(f"Downloaded file {filepath} is a ZIP archive, extracting...") 
+
+                        extracted_tif = None
+
+                        with zipfile.ZipFile(filepath, "r") as zip_ref:
+
+                            for file_in_zip in zip_ref.namelist():
+
+                                if file_in_zip.endswith(".tif"):
+
+                                    zip_ref.extract(file_in_zip, output_dir)
+
+                                    extracted_tif = os.path.join(output_dir, file_in_zip)
+
+                                    break
+
+                        if extracted_tif:
+
+                            os.remove(filepath)
+
+                            os.rename(extracted_tif, filepath)
+
+                            logger.info(f"Successfully extracted TIF to {filepath}")
                     download_paths.append(filepath)
                     success = True
                     logger.info(f"Successfully downloaded image {idx + 1} to {filepath}")
@@ -199,19 +227,19 @@ def _get_images(request: GeneralEarthEngineRequest2) -> List[ee.Image]:
     elif request.collection_id:
         logger.info(f"Fetching collection: {request.collection_id}")
         collection = ee.ImageCollection(request.collection_id)
-        logger.debug(f"Initial collection size: {collection.size().getInfo()}") # Log initial size
+        # Avoid getting size of entire unfiltered collection as it might hang GEE
 
         # Apply date filtering if dates are provided
         if request.start_date and request.end_date:
             logger.info(f"Applying date filter: {request.start_date} to {request.end_date}")
             collection = collection.filterDate(request.start_date, request.end_date)
-            logger.debug(f"Size after date filter: {collection.size().getInfo()}")
+            logger.debug("Applied date filter")
 
         # Apply cloud cover filter if specified
         if request.max_cloud_cover is not None:
             logger.info(f"Applying cloud cover filter: < {request.max_cloud_cover}")
             collection = collection.filter(ee.Filter.lt('CLOUD_COVER', request.max_cloud_cover))
-            logger.debug(f"Size after cloud cover filter: {collection.size().getInfo()}")
+            logger.debug("Applied cloud cover filter")
 
         # Apply additional filters if specified
         if request.filters:
@@ -234,7 +262,15 @@ def _get_images(request: GeneralEarthEngineRequest2) -> List[ee.Image]:
                 # Add more filter types as needed
                 else:
                      logger.warning(f"Unsupported filter type: {filter_type}")
-            logger.debug(f"Size after additional filters: {collection.size().getInfo()}")
+            logger.debug("Applied additional filters")
+
+        # Apply region filter if specified
+        roi = _get_region(request)
+        if roi:
+            logger.info(f"Applying geographic region filter")
+            ee_geom = ee.Geometry.Polygon(roi['coordinates'] if 'coordinates' in roi else roi)
+            collection = collection.filterBounds(ee_geom)
+            logger.debug("Applied region filter")
 
         # Get the size before attempting toList
         try:
