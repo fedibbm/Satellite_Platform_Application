@@ -590,6 +590,11 @@ export default function WorkflowDetailPage() {
                          if (typeof result.data.url === 'string') displayImage = result.data.url;
                          else if (typeof result.data.downloadUrl === 'string') displayImage = result.data.downloadUrl;
                       }
+                      // Case 4: GEE Node internally downloaded and saved Image object
+                      else if (typeof result?.imageId === 'string') {
+                          // Construct dynamic download URL directly from backend via auth boundaries
+                          displayImage = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/geospatial/images/${result.imageId}/data`;
+                      }
                       
                       return (
                       <div key={nodeId} className="border border-gray-200 rounded-lg overflow-hidden flex flex-col bg-white hover:shadow-md transition-shadow">
