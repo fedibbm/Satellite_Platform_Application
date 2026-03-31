@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - workflow
+      - workflow_nocicd
   workflow_dispatch:
 
 permissions:
