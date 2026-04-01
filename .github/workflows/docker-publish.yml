@@ -112,9 +112,53 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Set up Docker Buildx (for digest resolution)
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR (for digest resolution)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install Container Apps extension
         run: |
           az extension add --name containerapp --upgrade
+
+      - name: Resolve image digests from GHCR
+        id: resolve_digests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OWNER="${{ github.repository_owner }}"
+          REGISTRY="${{ env.REGISTRY }}"
+          TAG="${{ env.IMAGE_TAG }}"
+
+          resolve_ref() {
+            local image_name="$1"
+            local tag_ref="${REGISTRY}/${OWNER}/${image_name}:${TAG}"
+            local digest
+            digest="$(docker buildx imagetools inspect "$tag_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+            [[ -n "$digest" ]] || { echo "Failed to resolve digest for $tag_ref"; exit 1; }
+            echo "${REGISTRY}/${OWNER}/${image_name}@${digest}"
+          }
+
+          backend_ref="$(resolve_ref satellite-backend)"
+          frontend_ref="$(resolve_ref satellite-frontend)"
+          gee_ref="$(resolve_ref satellite-gee-service)"
+          imgproc_ref="$(resolve_ref satellite-image-processing)"
+
+          echo "backend_image_ref=$backend_ref" >> "$GITHUB_OUTPUT"
+          echo "frontend_image_ref=$frontend_ref" >> "$GITHUB_OUTPUT"
+          echo "gee_image_ref=$gee_ref" >> "$GITHUB_OUTPUT"
+          echo "imgproc_image_ref=$imgproc_ref" >> "$GITHUB_OUTPUT"
+
+          echo "Resolved backend digest ref: $backend_ref"
+          echo "Resolved frontend digest ref: $frontend_ref"
+          echo "Resolved GEE digest ref: $gee_ref"
+          echo "Resolved image-processing digest ref: $imgproc_ref"
 
       - name: Validate deployment inputs
         shell: bash
@@ -210,7 +254,7 @@ jobs:
           retry 4 20 az containerapp update \
             --name "$(echo "${BACKEND_APP}" | xargs)" \
             --resource-group "$(echo "${RESOURCE_GROUP}" | xargs)" \
-            --image "${{ env.REGISTRY }}/${{ github.repository_owner }}/satellite-backend:${{ env.IMAGE_TAG }}"
+            --image "${{ steps.resolve_digests.outputs.backend_image_ref }}"
 
       - name: Deploy frontend image
         shell: bash
@@ -234,7 +278,7 @@ jobs:
           retry 4 20 az containerapp update \
             --name "$(echo "${FRONTEND_APP}" | xargs)" \
             --resource-group "$(echo "${RESOURCE_GROUP}" | xargs)" \
-            --image "${{ env.REGISTRY }}/${{ github.repository_owner }}/satellite-frontend:${{ env.IMAGE_TAG }}"
+            --image "${{ steps.resolve_digests.outputs.frontend_image_ref }}"
 
       - name: Deploy GEE image
         shell: bash
@@ -258,7 +302,7 @@ jobs:
           retry 4 20 az containerapp update \
             --name "$(echo "${GEE_APP}" | xargs)" \
             --resource-group "$(echo "${RESOURCE_GROUP}" | xargs)" \
-            --image "${{ env.REGISTRY }}/${{ github.repository_owner }}/satellite-gee-service:${{ env.IMAGE_TAG }}"
+            --image "${{ steps.resolve_digests.outputs.gee_image_ref }}"
 
       - name: Deploy image processing image
         shell: bash
@@ -282,7 +326,7 @@ jobs:
           retry 4 20 az containerapp update \
             --name "$(echo "${IMAGE_PROC_APP}" | xargs)" \
             --resource-group "$(echo "${RESOURCE_GROUP}" | xargs)" \
-            --image "${{ env.REGISTRY }}/${{ github.repository_owner }}/satellite-image-processing:${{ env.IMAGE_TAG }}"
+            --image "${{ steps.resolve_digests.outputs.imgproc_image_ref }}"
 
       - name: Verify deployed image tags on Azure
         shell: bash
@@ -292,10 +336,6 @@ jobs:
           trim() { echo "$1" | xargs; }
 
           RG="$(trim "${RESOURCE_GROUP}")"
-          OWNER="${{ github.repository_owner }}"
-          REGISTRY="${{ env.REGISTRY }}"
-          TAG="${{ env.IMAGE_TAG }}"
-
           APPS=(
             "$(trim "${BACKEND_APP}")"
             "$(trim "${FRONTEND_APP}")"
@@ -303,16 +343,16 @@ jobs:
             "$(trim "${IMAGE_PROC_APP}")"
           )
 
-          IMAGES=(
-            "satellite-backend"
-            "satellite-frontend"
-            "satellite-gee-service"
-            "satellite-image-processing"
+          EXPECTED_REFS=(
+            "${{ steps.resolve_digests.outputs.backend_image_ref }}"
+            "${{ steps.resolve_digests.outputs.frontend_image_ref }}"
+            "${{ steps.resolve_digests.outputs.gee_image_ref }}"
+            "${{ steps.resolve_digests.outputs.imgproc_image_ref }}"
           )
 
           for i in "${!APPS[@]}"; do
             app="${APPS[$i]}"
-            expected_image="${REGISTRY}/${OWNER}/${IMAGES[$i]}:${TAG}"
+            expected_image="${EXPECTED_REFS[$i]}"
             actual_image="$(az containerapp show \
               --name "$app" \
               --resource-group "$RG" \
