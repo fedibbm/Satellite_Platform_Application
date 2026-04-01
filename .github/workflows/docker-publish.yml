@@ -283,3 +283,55 @@ jobs:
             --name "$(echo "${IMAGE_PROC_APP}" | xargs)" \
             --resource-group "$(echo "${RESOURCE_GROUP}" | xargs)" \
             --image "${{ env.REGISTRY }}/${{ github.repository_owner }}/satellite-image-processing:${{ env.IMAGE_TAG }}"
+
+      - name: Verify deployed image tags on Azure
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          trim() { echo "$1" | xargs; }
+
+          RG="$(trim "${RESOURCE_GROUP}")"
+          OWNER="${{ github.repository_owner }}"
+          REGISTRY="${{ env.REGISTRY }}"
+          TAG="${{ env.IMAGE_TAG }}"
+
+          APPS=(
+            "$(trim "${BACKEND_APP}")"
+            "$(trim "${FRONTEND_APP}")"
+            "$(trim "${GEE_APP}")"
+            "$(trim "${IMAGE_PROC_APP}")"
+          )
+
+          IMAGES=(
+            "satellite-backend"
+            "satellite-frontend"
+            "satellite-gee-service"
+            "satellite-image-processing"
+          )
+
+          for i in "${!APPS[@]}"; do
+            app="${APPS[$i]}"
+            expected_image="${REGISTRY}/${OWNER}/${IMAGES[$i]}:${TAG}"
+            actual_image="$(az containerapp show \
+              --name "$app" \
+              --resource-group "$RG" \
+              --query "properties.template.containers[0].image" \
+              -o tsv)"
+
+            latest_revision="$(az containerapp show \
+              --name "$app" \
+              --resource-group "$RG" \
+              --query "properties.latestRevisionName" \
+              -o tsv)"
+
+            echo "App: $app"
+            echo "Latest revision: $latest_revision"
+            echo "Expected image: $expected_image"
+            echo "Actual image:   $actual_image"
+
+            if [[ "$actual_image" != "$expected_image" ]]; then
+              echo "Image mismatch for $app. Deployment did not converge to expected tag."
+              exit 1
+            fi
+          done
