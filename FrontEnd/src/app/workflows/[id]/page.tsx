@@ -231,7 +231,12 @@ export default function WorkflowDetailPage() {
   };
 
   const handleLogConfig = () => {
-    const rawPayload = { workflow, nodes, edges };
+    // Clone workflow to avoid mutating state and remove bulky arrays before logging
+    const workflowCopy = { ...workflow };
+    delete workflowCopy.versions;
+    delete workflowCopy.executions;
+
+    const rawPayload = { workflow: workflowCopy, nodes, edges };
     const scrubbedPayload = JSON.parse(JSON.stringify(rawPayload, (key, value) => {
       if (typeof value === 'string') {
         if (value.startsWith('data:image/') && value.length > 500) {

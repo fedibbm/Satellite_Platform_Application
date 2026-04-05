@@ -165,49 +165,53 @@ public class DataInputNodeExecutor implements NodeExecutor {
         result.put("message", response.getMessage());
 
         // Handling Physical File Downloads specifically!
-        if ("download".equalsIgnoreCase(serviceType) && response.getDownloadedFiles() != null && !response.getDownloadedFiles().isEmpty()) {
-            try {
-                String workflowProjectId = (String) config.get("projectId");
-                if (workflowProjectId == null && context.getGlobalVariables() != null) {
-                    workflowProjectId = (String) context.getGlobalVariables().get("projectId");
+        if ("download".equalsIgnoreCase(serviceType)) {
+            if (response.getDownloadedFiles() != null && !response.getDownloadedFiles().isEmpty()) {
+                try {
+                    String workflowProjectId = (String) config.get("projectId");
+                    if (workflowProjectId == null && context.getGlobalVariables() != null) {
+                        workflowProjectId = (String) context.getGlobalVariables().get("projectId");
+                    }
+                    
+                    if (workflowProjectId == null) {
+                        throw new IllegalArgumentException("Cannot register GEE downloaded image because no projectId is provided in config or context variables");
+                    }
+    
+                    // Usually take the first file...
+                    String exportedFilePath = response.getDownloadedFiles().get(0);
+    
+                    // Download the file bytes from python service
+                    byte[] rawFile = geeService.downloadFileBytes(exportedFilePath);
+                    logger.info("Downloaded file {} of size {} bytes from GEE Python Service", exportedFilePath, rawFile.length);
+    
+                    // Wrap in MultipartFile
+                    ByteArrayMultipartFile multipartFile = new ByteArrayMultipartFile(
+                        rawFile,
+                        "gee_image",
+                        exportedFilePath.contains("/") ? exportedFilePath.substring(exportedFilePath.lastIndexOf('/') + 1) : exportedFilePath,
+                        "image/tiff"
+                    );
+    
+                    // Prepare DTO
+                    ImageDTO dto = new ImageDTO();
+                    dto.setProjectId(workflowProjectId);
+                    dto.setImageName("GEE_DOWNLOAD_" + System.currentTimeMillis());
+                    dto.setFile(multipartFile);
+                    dto.setFileSize(rawFile.length);
+    
+                    // Add physical file to ImageService
+                    ImageDTO savedImage = imageService.addImage(dto);
+    
+                    // Pass new registered Local ImageId into node output!
+                    result.put("imageId", savedImage.getImageId());
+                    result.put("importedFile", exportedFilePath); // Just for metadata
+    
+                } catch (Exception e) {
+                    logger.error("Failed to physicalize GEE download", e);
+                    throw new RuntimeException("Error transferring GEE file into internal storage: " + e.getMessage());
                 }
-                
-                if (workflowProjectId == null) {
-                    throw new IllegalArgumentException("Cannot register GEE downloaded image because no projectId is provided in config or context variables");
-                }
-
-                // Usually take the first file...
-                String exportedFilePath = response.getDownloadedFiles().get(0);
-
-                // Download the file bytes from python service
-                byte[] rawFile = geeService.downloadFileBytes(exportedFilePath);
-                logger.info("Downloaded file {} of size {} bytes from GEE Python Service", exportedFilePath, rawFile.length);
-
-                // Wrap in MultipartFile
-                ByteArrayMultipartFile multipartFile = new ByteArrayMultipartFile(
-                    rawFile,
-                    "gee_image",
-                    exportedFilePath.contains("/") ? exportedFilePath.substring(exportedFilePath.lastIndexOf('/') + 1) : exportedFilePath,
-                    "image/tiff"
-                );
-
-                // Prepare DTO
-                ImageDTO dto = new ImageDTO();
-                dto.setProjectId(workflowProjectId);
-                dto.setImageName("GEE_DOWNLOAD_" + System.currentTimeMillis());
-                dto.setFile(multipartFile);
-                dto.setFileSize(rawFile.length);
-
-                // Add physical file to ImageService
-                ImageDTO savedImage = imageService.addImage(dto);
-
-                // Pass new registered Local ImageId into node output!
-                result.put("imageId", savedImage.getImageId());
-                result.put("importedFile", exportedFilePath); // Just for metadata
-
-            } catch (Exception e) {
-                logger.error("Failed to physicalize GEE download", e);
-                throw new RuntimeException("Error transferring GEE file into internal storage: " + e.getMessage());
+            } else {
+                throw new RuntimeException("GEE successfully finished but returned NO datasets (0 matching images). Check cloud cover and date range filters in node properties!");
             }
         } else {
             result.put("data", response.getData());
@@ -326,6 +330,8 @@ public class DataInputNodeExecutor implements NodeExecutor {
             return false;
         }
 
+        logger.info("Validating config object in DataInputNodeExecutor: {}", config );
+
         String dataSource = (String) config.getOrDefault("dataSource", "project");
 
         switch (dataSource.toLowerCase()) {
@@ -335,8 +341,6 @@ public class DataInputNodeExecutor implements NodeExecutor {
             case "images":
                 return config.containsKey("projectId");
 
-            case "image":
-                return config.containsKey("imageId");
 
             case "gee":
                 boolean hasRegion = config.containsKey("region");

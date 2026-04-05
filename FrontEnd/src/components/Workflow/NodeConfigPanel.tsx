@@ -31,7 +31,7 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
           defaultConfig = { triggerType: 'manual' };
           break;
         case 'data-input':
-          defaultConfig = { dataSource: 'gee', serviceType: 'get_images' };
+          defaultConfig = { dataSource: 'gee', serviceType: 'get_images', collection_id: 'COPERNICUS/S2_SR_HARMONIZED' };
           break;
         case 'processing':
           defaultConfig = { processingType: 'ndvi', inputSource: 'previous', outputFormat: 'geotiff', soilBrightness: '0.5' };
@@ -51,10 +51,32 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
   if (!node) return null;
 
   const handleSave = () => {
+    // Fill in default values for UI elements that are visually populated but missing from state
+    let finalizedConfig = { ...config };
+    if (node.type === 'data-input' && finalizedConfig.dataSource === 'gee') {
+      if (!finalizedConfig.serviceType) finalizedConfig.serviceType = 'get_images';
+      if (!finalizedConfig.collection_id) finalizedConfig.collection_id = 'COPERNICUS/S2_SR_HARMONIZED';
+      if (!finalizedConfig.max_cloud_cover) finalizedConfig.max_cloud_cover = '20';
+      if (!finalizedConfig.scale) finalizedConfig.scale = '30';
+    } else if (node.type === 'trigger') {
+      if (!finalizedConfig.triggerType) finalizedConfig.triggerType = 'manual';
+    } else if (node.type === 'processing') {
+      if (!finalizedConfig.processingType) finalizedConfig.processingType = 'ndvi';
+      if (!finalizedConfig.inputSource) finalizedConfig.inputSource = 'previous';
+      if (!finalizedConfig.outputFormat) finalizedConfig.outputFormat = 'geotiff';
+      if (finalizedConfig.processingType === 'savi' && !finalizedConfig.soilBrightness) finalizedConfig.soilBrightness = '0.5';
+    } else if (node.type === 'decision') {
+      if (!finalizedConfig.conditionType) finalizedConfig.conditionType = 'comparison';
+      if (finalizedConfig.conditionType === 'comparison' && !finalizedConfig.operator) finalizedConfig.operator = '>';
+      if (finalizedConfig.conditionType === 'data-check' && !finalizedConfig.checkType) finalizedConfig.checkType = 'hasData';
+    } else if (node.type === 'output') {
+      if (!finalizedConfig.outputType) finalizedConfig.outputType = 'store';
+    }
+
     onSave(node.id, {
       label,
       description,
-      config,
+      config: finalizedConfig,
     });
     onClose();
   };
