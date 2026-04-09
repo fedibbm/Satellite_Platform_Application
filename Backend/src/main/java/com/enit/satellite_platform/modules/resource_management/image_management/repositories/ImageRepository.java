@@ -211,4 +211,9 @@ public interface ImageRepository extends SoftDeletableRepository<Image, String> 
      * Used for checking before cascade soft delete.
      */
     List<Image> findAllByProject_IdAndDeletedFalse(ObjectId projectId);
+
+    /**
+     * Find all non-deleted images associated with a project ID, with pagination.
+     */
+    Page<Image> findAllByProject_IdAndDeletedFalse(ObjectId projectId, Pageable pageable);
 }

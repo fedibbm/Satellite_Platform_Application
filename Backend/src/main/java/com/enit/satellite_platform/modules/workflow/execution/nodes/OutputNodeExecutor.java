@@ -76,6 +76,7 @@ public class OutputNodeExecutor implements NodeExecutor {
                             dataMap.put("processedImageBase64", base64);
                             // In real scenario, convert base64 to byte[] and save as file
                             req.setData(dataMap);
+                            req.setDate(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
                             req.setStatus(com.enit.satellite_platform.modules.resource_management.image_management.entities.ProcessingStatus.COMPLETED);
                             
                             try {

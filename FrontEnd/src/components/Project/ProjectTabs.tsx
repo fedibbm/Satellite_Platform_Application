@@ -28,6 +28,7 @@ const ProjectTabs: React.FC<ProjectTabsProps> = ({ activeTab, onTabChange }) => 
                 <Tab label="Project Details" {...a11yProps(0)} />
                 <Tab label="Images" {...a11yProps(1)} />
                 <Tab label="Analysis Results" {...a11yProps(2)} />
+                <Tab label="Workflows" {...a11yProps(3)} />
             </Tabs>
         </Paper>
     );

@@ -55,6 +55,7 @@ def download_ee_images(request: GeneralEarthEngineRequest2, output_dir: str = "e
     
     # Download each image
     download_paths = []
+    preview_urls = []
     total_images = len(images_list)
     logger.info(f"Starting download process for {total_images} images.")
 
@@ -185,6 +186,23 @@ def download_ee_images(request: GeneralEarthEngineRequest2, output_dir: str = "e
                             os.rename(extracted_tif, filepath)
 
                             logger.info(f"Successfully extracted TIF to {filepath}")
+                    
+                    preview_url = None
+                    try:
+                        preview_params = {}
+                        if roi:
+                            preview_params['region'] = roi
+                        if vis_params:
+                            import copy
+                            preview_params.update(copy.deepcopy(vis_params))
+                        # Use a small dimension for thumbnails
+                        preview_params['dimensions'] = 512
+                        preview_url = img.getThumbURL(preview_params)
+                        logger.info(f"Successfully generated preview URL for image {idx + 1}")
+                    except Exception as e:
+                        logger.warning(f"Could not generate preview URL for image {idx + 1}: {e}")
+                    
+                    preview_urls.append(preview_url)
                     download_paths.append(filepath)
                     success = True
                     logger.info(f"Successfully downloaded image {idx + 1} to {filepath}")
@@ -215,7 +233,7 @@ def download_ee_images(request: GeneralEarthEngineRequest2, output_dir: str = "e
             logger.error(f"Unexpected error generating download URL for image {idx + 1}: {e}")
 
     logger.info(f"Download process finished. Successfully downloaded {len(download_paths)} out of {total_images} images.")
-    return download_paths
+    return download_paths, preview_urls
 
 def _get_images(request: GeneralEarthEngineRequest2) -> List[ee.Image]:
     """Get images based on the request parameters."""
@@ -238,7 +256,8 @@ def _get_images(request: GeneralEarthEngineRequest2) -> List[ee.Image]:
         # Apply cloud cover filter if specified
         if request.max_cloud_cover is not None:
             logger.info(f"Applying cloud cover filter: < {request.max_cloud_cover}")
-            collection = collection.filter(ee.Filter.lt('CLOUD_COVER', request.max_cloud_cover))
+            cloud_cover_property = 'CLOUDY_PIXEL_PERCENTAGE' if 'S2' in request.collection_id else 'CLOUD_COVER'
+            collection = collection.filter(ee.Filter.lt(cloud_cover_property, request.max_cloud_cover))
             logger.debug("Applied cloud cover filter")
 
         # Apply additional filters if specified

@@ -198,6 +198,16 @@ public class DataInputNodeExecutor implements NodeExecutor {
                     dto.setImageName("GEE_DOWNLOAD_" + System.currentTimeMillis());
                     dto.setFile(multipartFile);
                     dto.setFileSize(rawFile.length);
+                    
+                    if (response.getPreviewUrls() != null && !response.getPreviewUrls().isEmpty()) {
+                        String previewUrl = response.getPreviewUrls().get(0);
+                        if (previewUrl != null && !previewUrl.isEmpty()) {
+                            Map<String, Object> meta = new HashMap<>();
+                            meta.put("thumbnailUrl", previewUrl);
+                            dto.setMetadata(meta);
+                            result.put("imageUrl", previewUrl);
+                        }
+                    }
     
                     // Add physical file to ImageService
                     ImageDTO savedImage = imageService.addImage(dto);

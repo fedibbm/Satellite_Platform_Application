@@ -55,10 +55,10 @@ export class ImagesService {
     const filename = imageData.imageName || imageData.filename || 'Unknown Filename';
     // Construct URL assuming a backend endpoint exists to serve the image by ID
     // Use relative path; httpClient in getImageData will handle the base URL
-    const imageUrl = imageId ? `/geospatial/images/${imageId}/data` : '/placeholder-image.png';
-    // Note: Using the full data URL for thumbnail might be inefficient.
-    // Consider a dedicated thumbnail endpoint if performance is an issue.
-    const thumbnailUrl = imageUrl; 
+    const originalUrl = imageId ? `/geospatial/images/${imageId}/data` : '/placeholder-image.png';
+    const imageUrl = imageData.metadata?.thumbnailUrl || originalUrl;
+
+    const thumbnailUrl = imageData.metadata?.thumbnailUrl || imageUrl;  
 
     // Extract dates if available. The getImagesByProject response item lacks date fields.
     // Set to null if not provided by the specific backend response for this item.
@@ -181,7 +181,7 @@ export class ImagesService {
       // The httpClient seems to automatically extract the backend's 'data' field.
       // So, response.data should contain { content: [...], page: {...} }
       const imageContent = response?.data?.content; 
-      // console.log('Extracted imageContent (final attempt):', imageContent); // Commented out // Keep one log for confirmation
+      console.log('Extracted imageContent (final attempt):', imageContent?.[0]); // Un-comment to see the actual JSON object
 
       const images = Array.isArray(imageContent) ? await Promise.all(imageContent.map(async (image: any) => {
         const normalizedImage = {
@@ -189,16 +189,18 @@ export class ImagesService {
           id: image.imageId, // Use imageId from the backend response item
         };
 
-        let imageUrl = '/placeholder-image.png'; // Default fallback
-        let thumbnailUrl = '/placeholder-image.png';
+        let imageUrl = normalizedImage.metadata?.thumbnailUrl || '/placeholder-image.png';
+        let thumbnailUrl = normalizedImage.metadata?.thumbnailUrl || '/placeholder-image.png';
 
-        if (normalizedImage && normalizedImage.id) {
+        if (!normalizedImage.metadata?.thumbnailUrl && normalizedImage && normalizedImage.id) {
           try {
             const imageBlob = await this.getImageData(normalizedImage.id);
             imageUrl = URL.createObjectURL(imageBlob);
             thumbnailUrl = imageUrl; // Same URL for thumbnail
           } catch (error) {
             console.warn(`Failed to fetch image data for image ${normalizedImage.id}:`, error);
+            imageUrl = ''; // Clear fallback if download completely fails
+            thumbnailUrl = '';
           }
         }
         

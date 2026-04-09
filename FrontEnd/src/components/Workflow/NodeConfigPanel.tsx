@@ -239,9 +239,9 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
                     </div>
                   </label>
                   
-                  {isMapExpanded && (
-                    <div className="fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center p-4 sm:p-8">
-                      <div className="bg-white w-full h-full rounded-lg shadow-2xl flex flex-col flex-1 overflow-hidden">
+                  <div className={isMapExpanded ? "fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center p-4 sm:p-8" : ""}>
+                    <div className={isMapExpanded ? "bg-white w-full h-full rounded-lg shadow-2xl flex flex-col flex-1 overflow-hidden" : "h-64 w-full mb-2 border border-gray-300 rounded flex flex-col overflow-hidden"}>
+                      {isMapExpanded && (
                         <div className="flex justify-between items-center p-4 border-b bg-gray-50 flex-shrink-0">
                           <h3 className="text-lg font-bold text-gray-800">Select Region</h3>
                           <button 
@@ -252,47 +252,27 @@ export default function NodeConfigPanel({ node, onClose, onSave }: NodeConfigPan
                             Done Selecting
                           </button>
                         </div>
-                        <div className="flex-1 w-full relative min-h-0 z-0">
-                          <Map
-                            onShapeCreated={(e: any) => {
-                              const geoJson = e.layer.toGeoJSON();
-                              const regionData = geoJson.geometry ? geoJson.geometry : geoJson;
-                              updateConfig('region', JSON.stringify(regionData, null, 2));
-                            }}
-                            onClearShape={() => updateConfig('region', '')}
-                            initialRegion={config.region ? (() => { 
-                              try { 
-                                const parsed = JSON.parse(config.region); 
-                                return parsed.type === 'Feature' ? parsed : { type: 'Feature', properties: {}, geometry: parsed };
-                              } catch { return null; } 
-                            })() : null}
-                          />
-                        </div>
+                      )}
+                      <div className="flex-1 w-full relative min-h-0 z-0">
+                        <Map
+                          onShapeCreated={(e: any) => {
+                            const geoJson = e.layer.toGeoJSON();
+                            const regionData = geoJson.geometry ? geoJson.geometry : geoJson;
+                            updateConfig("region", JSON.stringify(regionData, null, 2));
+                          }}
+                          onClearShape={() => updateConfig("region", "")}
+                          initialRegion={config.region ? (() => { 
+                            try { 
+                              const parsed = JSON.parse(config.region); 
+                              return parsed.type === "Feature" ? parsed : { type: "Feature", properties: {}, geometry: parsed };
+                            } catch { 
+                              return null; 
+                            } 
+                          })() : null}
+                        />
                       </div>
                     </div>
-                  )}
-
-                  {!isMapExpanded && (
-                  <div className="h-64 w-full mb-2 border border-gray-300 rounded overflow-hidden">
-                    <Map
-                      onShapeCreated={(e: any) => {
-                        const geoJson = e.layer.toGeoJSON();
-                        // Usually the API wants the geometry for GEE queries, or the whole Feature
-                        const regionData = geoJson.geometry ? geoJson.geometry : geoJson;
-                        updateConfig('region', JSON.stringify(regionData, null, 2));
-                      }}
-                      onClearShape={() => updateConfig('region', '')}
-                      initialRegion={config.region ? (() => { 
-                        try { 
-                          const parsed = JSON.parse(config.region); 
-                          return parsed.type === 'Feature' ? parsed : { type: 'Feature', properties: {}, geometry: parsed };
-                        } catch { 
-                          return null; 
-                        } 
-                      })() : null}
-                    />
                   </div>
-                  )}
                   <textarea
                     value={config.region || ''}
                     onChange={(e) => updateConfig('region', e.target.value)}

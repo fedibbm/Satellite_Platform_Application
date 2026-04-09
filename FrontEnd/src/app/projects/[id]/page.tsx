@@ -17,6 +17,7 @@ import ProjectTabs, { TabPanel } from '@/components/Project/ProjectTabs';
 import ProjectDetailsTabPanel from '@/components/Project/ProjectDetailsTabPanel';
 import ProjectImagesTabPanel from '@/components/Project/ProjectImagesTabPanel';
 import ProjectAnalysisTabPanel from '@/components/Project/ProjectAnalysisTabPanel';
+import ProjectWorkflowsTabPanel from '@/components/Project/ProjectWorkflowsTabPanel';
 
 export default function ProjectDetailPage() {
     const params = useParams();
@@ -241,6 +242,10 @@ export default function ProjectDetailPage() {
                         handleDeleteAnalysis={handleDeleteAnalysis}
                         hasImages={satelliteImages.length > 0}
                     />
+                </TabPanel>
+
+                <TabPanel value={activeTab} index={3}>
+                    <ProjectWorkflowsTabPanel projectId={projectId} />
                 </TabPanel>
             </div>
         </div>

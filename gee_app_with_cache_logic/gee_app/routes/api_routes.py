@@ -455,15 +455,15 @@ async def process_download():
 
         # Call the download function (it's synchronous, so no await needed)
         # Note: download_ee_images is synchronous based on its definition
-        downloaded_files = download_ee_images(request=request_model, output_dir=output_dir)
+        downloaded_files, preview_urls = download_ee_images(request=request_model, output_dir=output_dir)
 
         if not downloaded_files:
             logger.warning(f"No files were downloaded for request: {data}")
-            return jsonify({'status': 'completed', 'message': 'No files downloaded (check filters or collection status)', 'downloaded_files': []}), 200
+            return jsonify({'status': 'completed', 'message': 'No files downloaded (check filters or collection status)', 'downloaded_files': [], 'preview_urls': []}), 200
         
         logger.info(f"Successfully downloaded {len(downloaded_files)} files for request.")
         # Return the list of downloaded file paths (relative to the server)
-        return jsonify({'status': 'completed', 'downloaded_files': downloaded_files}), 200
+        return jsonify({'status': 'completed', 'downloaded_files': downloaded_files, 'preview_urls': preview_urls}), 200
 
     except ValidationError as ve:
         logger.error(f"Validation error for {analysis_type}: {str(ve)}")

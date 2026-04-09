@@ -42,6 +42,20 @@ const ImageLayerComponent = ({ url }: { url?: string }) => {
   return null;
 };
 
+// Component to handle auto-resizing when container dimensions change
+const ResizeHandler = () => {
+  const map = useMap();
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    const container = map.getContainer();
+    resizeObserver.observe(container);
+    return () => resizeObserver.unobserve(container);
+  }, [map]);
+  return null;
+};
+
 // Component to handle initial region drawing and map fitting
 const InitialRegionHandler = ({ region }: { region?: GeoJSONFeature | null }) => {
     const map = useMap();
@@ -81,7 +95,30 @@ const Map: React.FC<MapProps> = ({ onShapeCreated, imageUrl, onClearShape, initi
 
         try {
             const geoJsonLayer = L.geoJSON(initialRegion);
-            geoJsonLayer.addTo(featureGroup);
+            // Leaflet-draw requires individual shapes (L.Polygon, etc.), not a LayerGroup.
+            // We extract the actual layers from the L.geoJSON group and add them directly.
+            geoJsonLayer.eachLayer((layer: any) => {
+                if (layer instanceof L.Polygon && !(layer instanceof L.Rectangle)) {
+                    const latlngs = layer.getLatLngs()[0] as any[];
+                    // GeoJSON rectangles are saved as Polygons with 5 points (closed loop)
+                    if (Array.isArray(latlngs) && latlngs.length === 5) {
+                        const bounds = layer.getBounds();
+                        // Check if the polygon's points perfectly match the corners of its bounding box
+                        const hasNW = latlngs.some((ll: any) => ll.lat === bounds.getNorthWest().lat && ll.lng === bounds.getNorthWest().lng);
+                        const hasNE = latlngs.some((ll: any) => ll.lat === bounds.getNorthEast().lat && ll.lng === bounds.getNorthEast().lng);
+                        const hasSE = latlngs.some((ll: any) => ll.lat === bounds.getSouthEast().lat && ll.lng === bounds.getSouthEast().lng);
+                        const hasSW = latlngs.some((ll: any) => ll.lat === bounds.getSouthWest().lat && ll.lng === bounds.getSouthWest().lng);
+
+                        if (hasNW && hasNE && hasSE && hasSW) {
+                            // It's a perfect rectangle, recreate it as an L.Rectangle
+                            const rect = L.rectangle(bounds);
+                            featureGroup.addLayer(rect);
+                            return;
+                        }
+                    }
+                }
+                featureGroup.addLayer(layer);
+            });
 
             // Fit map bounds to the drawn layer
             mapRef.current.fitBounds(geoJsonLayer.getBounds());
@@ -98,14 +135,22 @@ const Map: React.FC<MapProps> = ({ onShapeCreated, imageUrl, onClearShape, initi
     onShapeCreated(e);
   };
 
+  const handleShapeEdited = (e: any) => {
+    e.layers.eachLayer((layer: any) => {
+      console.log('Shape edited:', layer.toGeoJSON());
+      onShapeCreated({ layer }); // Reuse the creation shape handler to update the config
+    });
+  };
+
   return (
     <MapContainer
       ref={mapRef} // Assign the ref here
       center={[0, 0]}
       zoom={2}
-      className="h-full w-full rounded-lg"
+      className="h-full w-full rounded-lg relative z-0"
       // whenReady prop doesn't take the instance, ref is used instead
     >
+      <ResizeHandler />
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -114,7 +159,12 @@ const Map: React.FC<MapProps> = ({ onShapeCreated, imageUrl, onClearShape, initi
         <EditControl
           position="topright"
           onCreated={handleShapeCreated}
+          onEdited={handleShapeEdited}
           onDeleted={onClearShape}
+          edit={{
+            edit: true,
+            remove: true,
+          }}
           draw={{
             rectangle: true,
             polygon: true,

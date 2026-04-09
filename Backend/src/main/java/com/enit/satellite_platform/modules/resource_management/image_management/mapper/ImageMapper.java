@@ -48,7 +48,6 @@ public interface ImageMapper {
     @Mapping(target = "results", ignore = true)
     @Mapping(target = "requestTime", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "metadata", ignore = true)
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     Image toEntity(ImageDTO imageDTO);

@@ -385,10 +385,10 @@ public class ImageService {
             logger.info("Project found: {} with ID: {}", project.getProjectName(), project.getId());
             
             // Use the new method filtering by deleted=false
-            Page<ImageMetadataProjection> page = imageRepository.findAllByProjectIdAndDeletedFalseProjectedBy(projectId, pageable);
+            Page<Image> page = imageRepository.findAllByProject_IdAndDeletedFalse(projectId, pageable);
             logger.info("Found {} images for project {}", page.getTotalElements(), projectId);
             
-            List<ImageDTO> dtoList = imageMapper.projectionToDTOList(page.getContent());
+            List<ImageDTO> dtoList = imageMapper.toDTOList(page.getContent());
             logger.info("Mapped {} images to DTOs", dtoList.size());
             
             return new PageImpl<>(dtoList, pageable, page.getTotalElements());

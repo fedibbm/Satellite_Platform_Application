@@ -1,0 +1,2 @@
+GET http://localhost:8080/geospatial/images/by-project/69b78c4a84723a565a35db2f
+Authorization: Bearer {{token}}

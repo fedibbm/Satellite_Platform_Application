@@ -29,6 +29,9 @@ public class ProcessingResponse {
     @JsonProperty("downloaded_files")
     private java.util.List<String> downloadedFiles;
     
+    @JsonProperty("preview_urls")
+    private java.util.List<String> previewUrls;
+    
     public ProcessingResponse(String status,String message) {
         this.status = status;
         this.message = message;

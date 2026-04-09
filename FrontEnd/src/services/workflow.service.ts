@@ -57,6 +57,11 @@ export const workflowService = {
     return response?.data || [];
   },
 
+  async getWorkflowsByProject(projectId: string): Promise<Workflow[]> {
+    const response = await httpClient.get(`/api/workflows/project/${projectId}`);
+    return response?.data || [];
+  },
+
   async copyWorkflow(id: string, targetProjectId: string): Promise<Workflow> {
     const response = await httpClient.post(`/api/workflows/${id}/copy?targetProjectId=${targetProjectId}`, {});
     if (!response?.data) {
