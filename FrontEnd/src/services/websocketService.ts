@@ -45,17 +45,8 @@ class WebSocketService {
   }
 
   private initializeClient() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No auth token found, WebSocket connection will fail');
-      return;
-    }
-
     this.client = new Client({
-      webSocketFactory: () => new SockJS(WS_URL),
-      connectHeaders: {
-        Authorization: `Bearer ${token}`
-      },
+      webSocketFactory: () => new SockJS(WS_URL, undefined, { withCredentials: true }),
       debug: (str) => {
         console.log('[STOMP]', str);
       },

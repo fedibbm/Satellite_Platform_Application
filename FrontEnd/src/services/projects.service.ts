@@ -3,9 +3,19 @@ import { httpClient } from '@/utils/api/http-client';
 
 const API_BASE_URL = '/api/thematician/projects';
 
+export type PermissionLevel = 'READ' | 'EDITOR' | 'WRITE';
+
 export interface ProjectSharingRequest {
     projectId: string;
     otherEmail: string;
+    permission?: PermissionLevel;
+}
+
+export interface SharedUserInfo {
+    userId: string;
+    userName: string;
+    userEmail: string;
+    permissionLevel: PermissionLevel;
 }
 
 export const fetchStatistics = async () => {
@@ -54,6 +64,18 @@ export const getAllProjects = async (page: number = 0, size: number = 10): Promi
     }
 };
 
+export const getSharedWithMeProjects = async (page: number = 0, size: number = 10): Promise<PaginatedResponse<Project>> => {
+    try {
+        const response = await httpClient.get(`${API_BASE_URL}/shared-with-me?page=${page}&size=${size}`, {
+            requiresAuth: true
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching shared-with-me projects:', error);
+        throw new Error('Failed to fetch shared projects');
+    }
+};
+
 export const getProject = async (id: string): Promise<Project> => {
     try {
         const response = await httpClient.get(`${API_BASE_URL}/${id}`, {
@@ -66,10 +88,22 @@ export const getProject = async (id: string): Promise<Project> => {
     }
 };
 
+export const getSharedUsers = async (projectId: string): Promise<SharedUserInfo[]> => {
+    try {
+        const response = await httpClient.get(`${API_BASE_URL}/${projectId}/shared-users`, {
+            requiresAuth: true
+        });
+        return response?.data || [];
+    } catch (error) {
+        console.error('Error fetching shared users:', error);
+        throw new Error('Failed to fetch shared users');
+    }
+};
+
 export const shareProject = async (request: ProjectSharingRequest): Promise<void> => {
     try {
         await httpClient.post(`${API_BASE_URL}/${request.projectId}/share`, 
-            { email: request.otherEmail },
+            { otherEmail: request.otherEmail, permission: request.permission },
             { requiresAuth: true }
         );
     } catch (error) {
@@ -82,7 +116,7 @@ export const unshareProject = async (request: ProjectSharingRequest): Promise<vo
     try {
         await httpClient.post(
             `${API_BASE_URL}/${request.projectId}/unshare`,
-            { email: request.otherEmail },
+            { otherEmail: request.otherEmail },
             { requiresAuth: true }
         );
     } catch (error) {
@@ -154,7 +188,9 @@ export const createProject = async (projectData: {
 export const projectsService = {
     fetchStatistics,
     getAllProjects,
+    getSharedWithMeProjects,
     getProject,
+    getSharedUsers,
     createProject,
     shareProject,
     unshareProject,

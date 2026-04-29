@@ -59,8 +59,10 @@ Base URL: `/api/workflows`
 |--------|----------|-------------|
 | GET | `/api/workflows` | Get all workflows for current user |
 | GET | `/api/workflows/templates` | Get workflow templates |
+| GET | `/api/workflows/project/{projectId}` | Get workflows by project |
 | GET | `/api/workflows/{id}` | Get workflow by ID |
 | POST | `/api/workflows` | Create new workflow |
+| POST | `/api/workflows/{id}/copy` | Copy workflow (optional `targetProjectId`) |
 | PUT | `/api/workflows/{id}` | Update workflow |
 | DELETE | `/api/workflows/{id}` | Delete workflow |
 | POST | `/api/workflows/{id}/execute` | Execute workflow |
@@ -81,6 +83,9 @@ public interface NodeExecutor {
 
 #### Current Node Executors
 - **TriggerNodeExecutor**: Initiates workflow execution
+- **DataInputNodeExecutor**: Loads data from project/images/GEE
+- **ProcessingNodeExecutor**: Runs vegetation index processing workflows
+- **DecisionNodeExecutor**: Evaluates conditional logic for routing
 - **OutputNodeExecutor**: Saves workflow results
 
 #### Node Registry
@@ -91,16 +96,20 @@ public interface NodeExecutor {
 ### 4. Execution Flow
 
 1. User triggers workflow execution via UI
-2. Backend creates WorkflowExecution record
-3. ExecutionService validates workflow structure
-4. Nodes are executed sequentially (current implementation)
-5. Each node:
+2. Backend creates `WorkflowExecution` record and stores initial log
+3. Backend submits execution id to RabbitMQ queue `workflow.execution.queue`
+4. RabbitMQ listener processes execution in background
+5. ExecutionService validates workflow structure (trigger/edges/cycles)
+6. ExecutionPlanner creates stage-based topological execution plan
+7. Nodes are executed stage-by-stage (sequential inside each stage)
+8. Each node:
    - Receives execution context
    - Executes its operation
    - Returns result
    - Logs are recorded
-6. Final results stored in execution record
-7. Status updated (COMPLETED/FAILED)
+9. Status updates are pushed to `/topic/workflow.execution.{executionId}`
+10. Final results stored in execution record
+11. Status updated (COMPLETED/FAILED)
 
 ## Frontend Integration
 
@@ -126,98 +135,48 @@ public interface NodeExecutor {
 
 ### ✅ Completed
 1. Complete entity model with MongoDB persistence
-2. Full CRUD REST API for workflows
-3. Workflow versioning system
-4. Execution tracking and logging
-5. Node abstraction framework
-6. Node registry with auto-discovery
-7. Two sample node executors (Trigger, Output)
-8. Frontend-backend API integration
-9. Visual workflow canvas (ReactFlow)
-10. Workflow list and detail pages
+2. Full workflow API including project filter and workflow copy endpoint
+3. Workflow versioning system (`v1.0`, `v1.1`, ...)
+4. Workflow execution tracking and log persistence
+5. Node abstraction framework and executor auto-discovery registry
+6. Graph validation (`WorkflowValidator`) including cycle detection
+7. Stage-based topological planner (`ExecutionPlanner`)
+8. Asynchronous execution dispatch through RabbitMQ
+9. WebSocket execution updates via `/topic/workflow.execution.{executionId}`
+10. Active executors for all core node types (Trigger/DataInput/Processing/Decision/Output)
+11. Frontend workflow pages and canvas integrated with backend endpoints
 
-### 🔄 Partially Implemented
-1. **Node Execution**: Basic sequential execution implemented
-   - ⚠️ No DAG validation yet
-   - ⚠️ No parallel execution
-   - ⚠️ Simulated node operations (not calling real services)
+### 🔄 Partially Implemented / Known Limits
+1. **Execution parallelism**
+  - Stage planning supports parallelizable groups
+  - Nodes are still executed sequentially inside each stage
 
-2. **Node Types**: Framework ready, but only 2 executors implemented
-   - ✅ Trigger
-   - ❌ Data Input (needs GEE service integration)
-   - ❌ Processing (needs image processing service integration)
-   - ❌ Decision (needs condition evaluation logic)
-   - ✅ Output
+2. **Decision expression mode**
+  - Comparison/threshold/data-check are implemented
+  - Free-form expression evaluation remains intentionally simplified
+
+3. **Processing coverage**
+  - NDVI/EVI/SAVI/NDWI flow is integrated
+  - `water-bodies` and `change-detection` paths are still lightweight placeholders
+
+4. **Reliability controls**
+  - No dedicated retry/cancel/scheduling orchestration yet
+  - No DLQ/advanced queue policy documented for workflow execution queue
 
 ### ❌ Not Yet Implemented
-1. **Service Integration**
-   - GEE service node executor
-   - Image processing service node executor
-   - Project service node executor
-
-2. **Advanced Features**
-   - Async execution with RabbitMQ
-   - Parallel node execution
-   - Conditional routing (decision nodes)
-   - Loop/iteration nodes
-   - Error handling and retry policies
-   - Real-time WebSocket status updates
-   - Workflow scheduling (cron triggers)
-
-3. **Security & Validation**
-   - Node configuration schema validation
-   - Resource quota management
-   - Execution timeout limits
-
-4. **Monitoring**
-   - Execution metrics
-   - Performance tracking
-   - Failure alerts
+1. Cron/scheduled trigger runtime
+2. Explicit cancellation API for running executions
+3. Full expression engine for decision nodes (SpEL/JEXL class of parser)
+4. Advanced monitoring dashboard dedicated to workflow KPIs
 
 ## Next Steps
 
-### Phase 1: Service Integration (Priority 1)
-1. Implement GeeInputNodeExecutor
-   - Wrap existing GeeService
-   - Map node config to GEE parameters
-   - Handle image fetching
-
-2. Implement ProcessingNodeExecutor
-   - Integrate with image-processing-app
-   - Support NDVI, EVI, etc.
-   - Pass data between nodes
-
-3. Implement DataInputNodeExecutor
-   - Load data from projects
-   - Fetch images from storage
-   - Query MongoDB for resources
-
-4. Implement DecisionNodeExecutor
-   - Evaluate conditions
-   - Route to different paths
-   - Support comparison operators
-
-### Phase 2: Execution Engine Enhancement
-1. DAG validation before execution
-2. Topological sort for correct execution order
-3. Parallel execution for independent branches
-4. Context passing between nodes
-5. Error handling and rollback
-
-### Phase 3: Advanced Features
-1. Async execution with RabbitMQ
-2. WebSocket for real-time updates
-3. Scheduled workflows (cron triggers)
-4. Workflow templates library
-5. Import/export workflows
-
-### Phase 4: Production Readiness
-1. Comprehensive error handling
-2. Resource quotas and limits
-3. Execution metrics and monitoring
-4. Performance optimization
-5. Security hardening
-6. Comprehensive testing
+1. Implement true parallel execution per stage.
+2. Add execution cancellation and retry policies.
+3. Introduce a robust expression parser for decision nodes.
+4. Harden queue reliability strategy (retry/backoff/DLQ).
+5. Add scheduler support for non-manual triggers.
+6. Expand monitoring with workflow-specific SLO and failure metrics.
 
 ## Development Guide
 
@@ -377,7 +336,7 @@ curl -X GET http://localhost:8080/api/workflows/{id}/executions \
 
 - **MongoDB Indexing**: Index on `createdBy`, `projectId`, `workflowId`
 - **Caching**: Use Redis for frequently accessed workflows
-- **Async Execution**: Long-running workflows should be async
+- **Async Execution**: Implemented through RabbitMQ queue + listener
 - **Resource Limits**: Set max execution time and memory limits
 - **Connection Pooling**: Reuse HTTP connections to microservices
 
@@ -405,10 +364,11 @@ When adding new features:
 - Verify all required services are running
 - Check execution logs for errors
 
-### Nodes not executing in correct order
+### Nodes not executing in expected order
 - Verify edge connections
 - Check for cycles in workflow graph
 - Validate node IDs are unique
+- For decision branches, ensure edge labels (`true` / `false`) match decision output
 
 ### Frontend not connecting to backend
 - Verify NEXT_PUBLIC_API_BASE_URL is set
@@ -417,6 +377,6 @@ When adding new features:
 
 ---
 
-**Version**: 1.0.0  
-**Date**: February 11, 2026  
-**Status**: MVP Implemented - Ready for Service Integration
+**Version**: 2.1.0  
+**Date**: April 29, 2026  
+**Status**: Graph-based asynchronous engine implemented; production hardening in progress

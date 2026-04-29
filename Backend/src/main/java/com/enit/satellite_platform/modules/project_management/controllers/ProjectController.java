@@ -351,6 +351,70 @@ public class ProjectController {
         }
     }
 
+    @Operation(summary = "Share a project with another user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Project shared successfully"),
+            @ApiResponse(responseCode = "403", description = "User not authorized to share"),
+            @ApiResponse(responseCode = "404", description = "Project or user not found"),
+            @ApiResponse(responseCode = "500", description = "Error sharing project")
+    })
+    @PostMapping("/{projectId}/share")
+    public ResponseEntity<GenericResponse<?>> shareProject(
+            @PathVariable String projectId,
+            @RequestBody ProjectSharingRequest request) {
+        try {
+            String currentEmail = getCurrentEmail();
+            String otherEmail = request.getOtherEmail();
+            PermissionLevel permission = request.getPermission();
+
+            // Default to READ if permission is not provided
+            if (permission == null) {
+                permission = PermissionLevel.READ;
+            }
+
+            SharedUserInfoDto sharedUserInfo = projectService.shareProject(projectId, otherEmail, currentEmail, permission);
+            return ResponseEntity.ok(new GenericResponse<>("SUCCESS", "Project shared successfully", sharedUserInfo));
+        } catch (ProjectNotFoundException | UsernameNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new GenericResponse<>("FAILURE", e.getMessage(), null));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new GenericResponse<>("FAILURE", e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new GenericResponse<>("FAILURE", "Error sharing project: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Unshare a project with another user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Project unshared successfully"),
+            @ApiResponse(responseCode = "403", description = "User not authorized to unshare"),
+            @ApiResponse(responseCode = "404", description = "Project or user not found"),
+            @ApiResponse(responseCode = "500", description = "Error unsharing project")
+    })
+    @PostMapping("/{projectId}/unshare")
+    public ResponseEntity<GenericResponse<?>> unshareProject(
+            @PathVariable String projectId,
+            @RequestBody ProjectSharingRequest request) {
+        try {
+            String currentEmail = getCurrentEmail();
+            String otherEmail = request.getOtherEmail();
+
+            SharedUserInfoDto unsharedUserInfo = projectService.unshareProject(projectId, otherEmail, currentEmail);
+            return ResponseEntity.ok(new GenericResponse<>("SUCCESS", "Project unshared successfully", unsharedUserInfo));
+        } catch (ProjectNotFoundException | UsernameNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new GenericResponse<>("FAILURE", e.getMessage(), null));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new GenericResponse<>("FAILURE", e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new GenericResponse<>("FAILURE", "Error unsharing project: " + e.getMessage(), null));
+        }
+    }
+
     @Operation(summary = "Archive a project")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Project archived successfully"),

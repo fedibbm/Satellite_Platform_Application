@@ -1,7 +1,8 @@
 package com.enit.satellite_platform.modules.messaging.config;
 
 import com.enit.satellite_platform.modules.messaging.websocket.WebSocketAuthInterceptor;
-import lombok.RequiredArgsConstructor;
+import com.enit.satellite_platform.modules.messaging.websocket.WebSocketCookieHandshakeInterceptor;
+import com.enit.satellite_platform.modules.messaging.websocket.WebSocketCookieHandshakeHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -13,10 +14,19 @@ import org.springframework.web.socket.config.annotation.*;
  */
 @Configuration
 @EnableWebSocketMessageBroker
-@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+    private final WebSocketCookieHandshakeInterceptor webSocketCookieHandshakeInterceptor;
+    private final WebSocketCookieHandshakeHandler webSocketCookieHandshakeHandler;
+
+    public WebSocketConfig(WebSocketAuthInterceptor webSocketAuthInterceptor,
+                           WebSocketCookieHandshakeInterceptor webSocketCookieHandshakeInterceptor,
+                           WebSocketCookieHandshakeHandler webSocketCookieHandshakeHandler) {
+        this.webSocketAuthInterceptor = webSocketAuthInterceptor;
+        this.webSocketCookieHandshakeInterceptor = webSocketCookieHandshakeInterceptor;
+        this.webSocketCookieHandshakeHandler = webSocketCookieHandshakeHandler;
+    }
 
     /**
      * Configure message broker options.
@@ -44,7 +54,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
-                .withSockJS(); // Enable SockJS fallback for browsers without WebSocket support
+                .setHandshakeHandler(webSocketCookieHandshakeHandler)
+                .addInterceptors(webSocketCookieHandshakeInterceptor)
+                .withSockJS()
+                .setSessionCookieNeeded(true); // Ensure SockJS transports include cookies
     }
 
     /**

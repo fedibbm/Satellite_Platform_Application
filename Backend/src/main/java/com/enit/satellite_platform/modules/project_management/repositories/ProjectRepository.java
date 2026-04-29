@@ -175,6 +175,9 @@ public interface ProjectRepository extends SoftDeletableRepository<Project, Obje
     @Query("{'sharedUsers.?0': {$exists: true}}")
     List<Project> findBySharedUsersContainsKey(User user);
 
+    @Query("{'sharedUsers.?0': {$exists: true}}")
+    List<Project> findBySharedUsersContainsKey(String userId);
+
     /**
      * Finds projects where the sharedUsers map contains the given user as a key, with pagination.
      *
@@ -185,6 +188,9 @@ public interface ProjectRepository extends SoftDeletableRepository<Project, Obje
     @Query("{'sharedUsers.?0': {$exists: true}, 'deleted': false}")
     Page<Project> findBySharedUsersContainsKeyPageAndDeletedFalse(User user, Pageable pageable);
 
+    @Query("{'sharedUsers.?0': {$exists: true}, 'deleted': false}")
+    Page<Project> findBySharedUsersContainsKeyPageAndDeletedFalse(String userId, Pageable pageable);
+
     /**
      * Counts projects where the sharedUsers map contains the given user as a key.
      *
@@ -193,6 +199,9 @@ public interface ProjectRepository extends SoftDeletableRepository<Project, Obje
      */
     @Query(value = "{'sharedUsers.?0': {$exists: true}}", count = true)
     long countBySharedUsersContainsKey(User user);
+
+    @Query(value = "{'sharedUsers.?0': {$exists: true}}", count = true)
+    long countBySharedUsersContainsKey(String userId);
 
     /**
      * Finds all projects owned by a specific user.
@@ -217,5 +226,11 @@ public interface ProjectRepository extends SoftDeletableRepository<Project, Obje
      */
     @Query("{ '_id': ?0, 'deleted': false }")
     Optional<Project> findByIdAndDeletedFalse(ObjectId id);
+
+    @Query("{ 'deleted': false }")
+    Page<Project> findByDeletedFalse(Pageable pageable);
+
+    @Query("{ 'deleted': false }")
+    List<Project> findAllByDeletedFalse();
 
 }

@@ -25,6 +25,7 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -174,7 +175,23 @@ public class ProjectService {
    */
   @Cacheable(value = "projects", key = "#id.toString()")
   public ProjectDto getProject(ObjectId id) {
-    return projectMapper.toDTO(getProjectById(id));
+    return mapProjectToDtoWithCollaborators(getProjectById(id));
+  }
+
+  private ProjectDto mapProjectToDtoWithCollaborators(Project project) {
+    ProjectDto dto = projectMapper.toDTO(project);
+    if (project.getSharedUsers() == null || project.getSharedUsers().isEmpty()) {
+      dto.setCollaborators(Collections.emptyList());
+      return dto;
+    }
+
+    List<User> sharedUsers = userRepository.findAllById(project.getSharedUsers().keySet());
+    List<String> collaboratorEmails = sharedUsers.stream()
+        .map(User::getEmail)
+        .filter(email -> email != null && !email.isBlank())
+        .toList();
+    dto.setCollaborators(collaboratorEmails);
+    return dto;
   }
 
   private Project getProjectById(ObjectId id) {
@@ -209,7 +226,7 @@ public class ProjectService {
         });
     project.setLastAccessedTime(new Date());
     projectRepository.save(project);
-    return projectMapper.toDTO(project);
+    return mapProjectToDtoWithCollaborators(project);
   }
 
   /**
@@ -252,10 +269,22 @@ public class ProjectService {
   public Page<ProjectDto> getAllProjects(String email, Pageable pageable) {
     logger.info("Fetching all projects for email: {}", email);
     validatePageable(pageable);
-    User owner = getUserByEmail(email, "User not found for fetching projects: " + email);
-    // Use the renamed method to exclude soft-deleted projects
-    Page<Project> projects = projectRepository.findByOwnerIdAndDeletedFalse(new ObjectId(owner.getId()), pageable);
-    if (projects.isEmpty()) {
+    User currentUser = getUserByEmail(email, "User not found for fetching projects: " + email);
+
+    // Return all accessible projects (owned + shared), excluding soft-deleted ones.
+    List<Project> accessibleProjects = projectRepository.findAllByDeletedFalse().stream()
+        .filter(project -> project.getOwner() != null
+            && (project.getOwner().equals(currentUser) || project.hasAccess(currentUser)))
+        .toList();
+
+    int start = (int) pageable.getOffset();
+    int end = Math.min(start + pageable.getPageSize(), accessibleProjects.size());
+    List<Project> pageContent = start >= accessibleProjects.size()
+        ? Collections.emptyList()
+        : accessibleProjects.subList(start, end);
+
+    Page<Project> projects = new PageImpl<>(pageContent, pageable, accessibleProjects.size());
+    if (accessibleProjects.isEmpty()) {
       logger.info("No projects found for email: {} - returning empty list", email);
     }
     return projectMapper.toDTOPage(projects);
@@ -589,9 +618,21 @@ public class ProjectService {
     logger.info("Fetching projects shared with email: {}", email);
     validatePageable(pageable);
     User user = getUserByEmail(email, "User not found");
-    // Use findBySharedUsersContainsKeyPageAndDeletedFalse to exclude soft-deleted projects
-    Page<Project> sharedProjects = projectRepository.findBySharedUsersContainsKeyPageAndDeletedFalse(user, pageable);
-    return projectMapper.toDTOPage(sharedProjects);
+
+    // Robust filtering that does not depend on Mongo map-key query behavior
+    List<Project> accessibleSharedProjects = projectRepository.findAllByDeletedFalse().stream()
+        .filter(project -> project.getOwner() != null && !project.getOwner().equals(user))
+        .filter(project -> project.hasAccess(user))
+        .toList();
+
+    int start = (int) pageable.getOffset();
+    int end = Math.min(start + pageable.getPageSize(), accessibleSharedProjects.size());
+    List<Project> pageContent = start >= accessibleSharedProjects.size()
+        ? Collections.emptyList()
+        : accessibleSharedProjects.subList(start, end);
+
+    Page<Project> sharedProjectsPage = new PageImpl<>(pageContent, pageable, accessibleSharedProjects.size());
+    return projectMapper.toDTOPage(sharedProjectsPage);
   }
 
   /**

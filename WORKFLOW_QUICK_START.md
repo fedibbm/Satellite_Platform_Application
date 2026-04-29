@@ -16,6 +16,10 @@ cd FrontEnd
 npm run dev
 ```
 
+**RabbitMQ:**
+- Required for workflow execution queue processing.
+- Ensure broker is up before testing `POST /api/workflows/{id}/execute`.
+
 ### 2. Access Workflows
 
 Navigate to: `http://localhost:3000/workflows`
@@ -98,9 +102,20 @@ db.workflow_executions.find().pretty()
 1. Trigger → 2. Data Input → 3. Decision → 4a. Output (true) / 4b. Output (false)
 
 **Expected Result:**
-- ⚠️ Currently simulated - full routing not implemented yet
+- ✅ Decision node executes and returns `decision: true|false`
+- ✅ Branching follows edge labels (`true` / `false`)
+- ✅ Skipped branch nodes are logged as skipped
 
-### Scenario 3: Template Workflow
+### Scenario 3: Invalid Graph (Cycle)
+
+**Nodes:**
+1. Trigger → 2. Processing → 3. Output → back to Trigger
+
+**Expected Result:**
+- ✅ Validation fails before node execution
+- ✅ Execution marked failed with DAG/cycle error log
+
+### Scenario 4: Template Workflow
 
 **Steps:**
 1. Create workflow with `isTemplate: true`
@@ -143,6 +158,7 @@ Check execution status in:
 - UI: Workflow detail page → Executions tab
 - MongoDB: `workflow_executions` collection
 - Backend logs: Search for "Executing workflow"
+- WebSocket topic: `/topic/workflow.execution.{executionId}`
 
 ## 🔧 Development Mode
 
@@ -226,14 +242,15 @@ You know the implementation is working when:
 6. ✅ Execution record created in MongoDB
 7. ✅ Execution logs visible in UI
 8. ✅ Status updates correctly (RUNNING → COMPLETED)
+9. ✅ Execution id is queued and processed by RabbitMQ listener
 
 ## 🎯 Next Testing Phase
 
 Once basic functionality works:
-1. Test with real GEE service integration
-2. Test with image processing service
-3. Test concurrent executions
-4. Test error scenarios
+1. Test concurrent executions and queue behavior
+2. Test branch-heavy decision workflows
+3. Test real GEE and vegetation-index processing flows
+4. Test error and validation scenarios (invalid config, cyclic graph)
 5. Load test with many workflows
 
 ---

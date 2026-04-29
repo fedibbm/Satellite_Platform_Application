@@ -36,6 +36,14 @@ export function useProjectData(projectId: string | undefined | null) {
             // console.log(`Fetching project data for ID: ${projectId}, Attempt: ${retryCount + 1}`); // Commented out
             const projectData = await projectsService.getProject(projectId);
             if (projectData) {
+                try {
+                    const sharedUsers = await projectsService.getSharedUsers(projectId);
+                    projectData.collaborators = (sharedUsers || [])
+                        .map((u) => u.userEmail)
+                        .filter((email): email is string => !!email);
+                } catch (sharedUsersError) {
+                    console.warn('Could not fetch shared users for project:', sharedUsersError);
+                }
                 setProject(projectData);
                 setRetryCount(0); // Reset retry count on success
                 setLoading(false); // Stop loading on success

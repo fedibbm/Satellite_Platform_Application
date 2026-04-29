@@ -11,6 +11,7 @@ import {
     CircularProgress, // Import CircularProgress for loading state
 } from '@mui/material';
 import { Project } from '@/types/api';
+import { PermissionLevel } from '@/services/projects.service';
 
 // Define props based on the hooks it will use
 interface ProjectDetailsTabPanelProps {
@@ -22,8 +23,11 @@ interface ProjectDetailsTabPanelProps {
     sharingError: string | null;
     sharingSuccess: string | null;
     isSharing: boolean;
+    collaboratorPermissions: Record<string, PermissionLevel>;
+    setCollaboratorPermission: (email: string, permission: PermissionLevel) => void;
     handleShareProject: () => void;
     handleUnshareProject: (email: string) => void;
+    handleUpdateCollaboratorPermission: (email: string) => void;
 }
 
 const ProjectDetailsTabPanel: React.FC<ProjectDetailsTabPanelProps> = ({
@@ -34,8 +38,11 @@ const ProjectDetailsTabPanel: React.FC<ProjectDetailsTabPanelProps> = ({
     sharingError,
     sharingSuccess,
     isSharing,
+    collaboratorPermissions,
+    setCollaboratorPermission,
     handleShareProject,
     handleUnshareProject,
+    handleUpdateCollaboratorPermission,
 }) => {
     return (
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
@@ -58,7 +65,7 @@ const ProjectDetailsTabPanel: React.FC<ProjectDetailsTabPanelProps> = ({
                             <strong>Status:</strong> <Chip label={project.status || 'N/A'} size="small" />
                         </Typography>
                         <Typography variant="body2">
-                            <strong>Owner:</strong> {project.owner || 'N/A'}
+                            <strong>Created by:</strong> {project.ownerEmail || project.owner || 'N/A'}
                         </Typography>
                         {project.metadata?.location && (
                             <Typography variant="body2">
@@ -127,22 +134,50 @@ const ProjectDetailsTabPanel: React.FC<ProjectDetailsTabPanelProps> = ({
                                     <Paper
                                         key={email}
                                         variant="outlined"
-                                        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1 }}
+                                        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, gap: 1 }}
                                     >
                                         <Typography variant="body2" sx={{ overflowWrap: 'break-word', wordBreak: 'break-all', mr: 1 }}>
                                             {email}
                                         </Typography>
-                                        <Button
-                                            size="small"
-                                            color="error"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleUnshareProject(email);
-                                            }}
-                                            disabled={isSharing} // Disable remove button while any sharing action is in progress
-                                        >
-                                            Remove
-                                        </Button>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <TextField
+                                                select
+                                                size="small"
+                                                value={collaboratorPermissions[email] || 'READ'}
+                                                onChange={(e) => setCollaboratorPermission(email, e.target.value as PermissionLevel)}
+                                                SelectProps={{ native: true }}
+                                                disabled={isSharing}
+                                                sx={{ minWidth: 110 }}
+                                            >
+                                                <option value="READ">READ</option>
+                                                <option value="EDITOR">EDITOR</option>
+                                                <option value="WRITE">WRITE</option>
+                                            </TextField>
+
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUpdateCollaboratorPermission(email);
+                                                }}
+                                                disabled={isSharing}
+                                            >
+                                                Update
+                                            </Button>
+
+                                            <Button
+                                                size="small"
+                                                color="error"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUnshareProject(email);
+                                                }}
+                                                disabled={isSharing} // Disable remove button while any sharing action is in progress
+                                            >
+                                                Remove
+                                            </Button>
+                                        </Stack>
                                     </Paper>
                                 ))}
                             </Stack>

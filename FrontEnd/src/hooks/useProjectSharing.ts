@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { projectsService, ProjectSharingRequest } from '@/services/projects.service';
+import { useEffect, useState } from 'react';
+import { projectsService, ProjectSharingRequest, PermissionLevel } from '@/services/projects.service';
 import { Project } from '@/types/api'; // Import Project type
 
 // Define the type for the setProject function more explicitly
@@ -10,6 +10,39 @@ export function useProjectSharing(projectId: string | undefined | null, setProje
     const [sharingError, setSharingError] = useState<string | null>(null);
     const [sharingSuccess, setSharingSuccess] = useState<string | null>(null);
     const [isSharing, setIsSharing] = useState(false); // Add loading state
+    const [collaboratorPermissions, setCollaboratorPermissions] = useState<Record<string, PermissionLevel>>({});
+
+    const loadSharedUsers = async () => {
+        if (!projectId) return;
+        try {
+            const sharedUsers = await projectsService.getSharedUsers(projectId);
+            const permissionMap: Record<string, PermissionLevel> = {};
+            const collaborators: string[] = [];
+
+            (sharedUsers || []).forEach((user) => {
+                if (user.userEmail) {
+                    collaborators.push(user.userEmail);
+                    permissionMap[user.userEmail] = user.permissionLevel;
+                }
+            });
+
+            setCollaboratorPermissions(permissionMap);
+            setProject((currentProject) => {
+                if (!currentProject) return currentProject;
+                return {
+                    ...currentProject,
+                    collaborators,
+                };
+            });
+        } catch (error) {
+            console.warn('Could not load shared users:', error);
+        }
+    };
+
+    useEffect(() => {
+        loadSharedUsers();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [projectId]);
 
     const handleShareProject = async () => {
         setSharingError(null);
@@ -28,6 +61,7 @@ export function useProjectSharing(projectId: string | undefined | null, setProje
         const request: ProjectSharingRequest = {
             projectId: projectId,
             otherEmail: sharingEmail,
+            permission: 'READ',
         };
 
         try {
@@ -49,6 +83,8 @@ export function useProjectSharing(projectId: string | undefined | null, setProje
                     collaborators: newCollaborators,
                 };
             });
+
+            await loadSharedUsers();
 
         } catch (error: any) {
             console.error('Error sharing project:', error);
@@ -88,9 +124,48 @@ export function useProjectSharing(projectId: string | undefined | null, setProje
                     collaborators: currentProject.collaborators.filter(email => email !== emailToUnshare),
                 };
             });
+            setCollaboratorPermissions((current) => {
+                const updated = { ...current };
+                delete updated[emailToUnshare];
+                return updated;
+            });
         } catch (error: any) {
             console.error('Error unsharing project:', error);
             setSharingError(error.message || 'Failed to unshare project.');
+        } finally {
+            setIsSharing(false);
+        }
+    };
+
+    const setCollaboratorPermission = (email: string, permission: PermissionLevel) => {
+        setCollaboratorPermissions((current) => ({
+            ...current,
+            [email]: permission,
+        }));
+    };
+
+    const handleUpdateCollaboratorPermission = async (email: string) => {
+        if (!projectId) {
+            setSharingError('Invalid project ID.');
+            return;
+        }
+
+        const permission = collaboratorPermissions[email] || 'READ';
+        setSharingError(null);
+        setSharingSuccess(null);
+        setIsSharing(true);
+
+        try {
+            await projectsService.shareProject({
+                projectId,
+                otherEmail: email,
+                permission,
+            });
+            setSharingSuccess(`Permission for ${email} updated to ${permission}.`);
+            await loadSharedUsers();
+        } catch (error: any) {
+            console.error('Error updating collaborator permission:', error);
+            setSharingError(error.message || 'Failed to update permission.');
         } finally {
             setIsSharing(false);
         }
@@ -102,7 +177,10 @@ export function useProjectSharing(projectId: string | undefined | null, setProje
         sharingError,
         sharingSuccess,
         isSharing, // Expose loading state
+        collaboratorPermissions,
+        setCollaboratorPermission,
         handleShareProject,
         handleUnshareProject,
+        handleUpdateCollaboratorPermission,
     };
 }

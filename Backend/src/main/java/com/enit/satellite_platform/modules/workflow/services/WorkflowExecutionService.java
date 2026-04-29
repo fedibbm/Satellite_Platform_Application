@@ -6,6 +6,11 @@ import com.enit.satellite_platform.modules.workflow.execution.*;
 import com.enit.satellite_platform.modules.workflow.mapper.WorkflowMapper;
 import com.enit.satellite_platform.modules.workflow.repositories.WorkflowExecutionRepository;
 import com.enit.satellite_platform.modules.workflow.repositories.WorkflowRepository;
+import com.enit.satellite_platform.modules.project_management.entities.PermissionLevel;
+import com.enit.satellite_platform.modules.project_management.entities.Project;
+import com.enit.satellite_platform.modules.project_management.repositories.ProjectRepository;
+import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.User;
+import com.enit.satellite_platform.modules.user_management.normal_user_service.repositories.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +35,12 @@ public class WorkflowExecutionService {
 
     @Autowired
     private WorkflowMapper workflowMapper;
+
+    @Autowired
+    private ProjectRepository projectRepository;
+
+    @Autowired
+    private UserRepository userRepository;
     
     @Autowired
     private NodeRegistry nodeRegistry;
@@ -45,6 +56,28 @@ public class WorkflowExecutionService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    private User getUser(String userEmail) {
+        return userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    private void checkWorkflowAccess(Workflow workflow, String userEmail, PermissionLevel requiredLevel) {
+        User user = getUser(userEmail);
+
+        if (workflow.getProjectId() != null) {
+            Project project = projectRepository.findById(workflow.getProjectId())
+                    .orElseThrow(() -> new RuntimeException("Project not found"));
+            if (!project.hasAccess(user, requiredLevel)) {
+                throw new RuntimeException("Access denied to workflow");
+            }
+            return;
+        }
+
+        if (!workflow.getCreatedBy().equals(userEmail)) {
+            throw new RuntimeException("Access denied to workflow");
+        }
+    }
+
     public WorkflowExecutionDTO executeWorkflow(String workflowId, String userEmail) {
         logger.info("Starting execution for workflow: {} by user: {}", workflowId, userEmail);
 
@@ -52,10 +85,7 @@ public class WorkflowExecutionService {
         Workflow workflow = workflowRepository.findById(workflowId)
                 .orElseThrow(() -> new RuntimeException("Workflow not found"));
 
-        // Verify user has access
-        if (!workflow.getCreatedBy().equals(userEmail)) {
-            throw new RuntimeException("Access denied to workflow");
-        }
+        checkWorkflowAccess(workflow, userEmail, PermissionLevel.EDITOR);
 
         // Get current version
         WorkflowVersion currentVersion = workflow.getVersions().stream()
@@ -324,9 +354,6 @@ public class WorkflowExecutionService {
                         throw new RuntimeException(errorMsg);
                     }
 
-                    // Save execution state after each node
-                    executionRepository.save(execution);
-
                 } catch (Exception e) {
                     logger.error("Error executing node: {} - Type: {}, Message: {}", 
                         node.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
@@ -419,6 +446,7 @@ public class WorkflowExecutionService {
         log.setLevel(level);
         log.setMessage(message);
         execution.getLogs().add(log);
+        executionRepository.save(execution);
     }
 
     private void markExecutionFailed(WorkflowExecution execution, String nodeId, String errorMessage) {
@@ -442,9 +470,7 @@ public class WorkflowExecutionService {
         Workflow workflow = workflowRepository.findById(workflowId)
                 .orElseThrow(() -> new RuntimeException("Workflow not found"));
 
-        if (!workflow.getCreatedBy().equals(userEmail)) {
-            throw new RuntimeException("Access denied to workflow");
-        }
+        checkWorkflowAccess(workflow, userEmail, PermissionLevel.READ);
 
         List<WorkflowExecution> executions = executionRepository.findByWorkflowIdOrderByStartedAtDesc(workflowId);
         return executions.stream()
@@ -462,9 +488,7 @@ public class WorkflowExecutionService {
         Workflow workflow = workflowRepository.findById(execution.getWorkflowId())
                 .orElseThrow(() -> new RuntimeException("Associated workflow not found"));
 
-        if (!workflow.getCreatedBy().equals(userEmail)) {
-            throw new RuntimeException("Access denied to execution");
-        }
+        checkWorkflowAccess(workflow, userEmail, PermissionLevel.READ);
 
         return workflowMapper.toExecutionDTO(execution);
     }

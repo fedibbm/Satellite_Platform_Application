@@ -55,9 +55,14 @@ const ProjectCard = ({ project, onClick }: { project: Project; onClick: () => vo
         </div>
       )}
       <div className="mt-4 flex items-center text-sm text-gray-500">
-        <span>
-          Updated {new Date(project.updatedAt || Date.now()).toLocaleDateString()}
-        </span>
+        <div className="flex flex-col">
+          <span>
+            Updated {new Date(project.updatedAt || Date.now()).toLocaleDateString()}
+          </span>
+          <span>
+            Created by {project.ownerEmail || project.owner || 'Unknown'}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -84,12 +89,22 @@ export default function ProjectsPage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await projectsService.getAllProjects(page, pageSize);
-        if (!data || !data.content) {
+        const [ownedData, sharedData] = await Promise.all([
+          projectsService.getAllProjects(page, pageSize),
+          projectsService.getSharedWithMeProjects(page, pageSize),
+        ]);
+
+        if (!ownedData?.content || !sharedData?.content) {
           throw new Error('Invalid response format from server');
         }
+
+        const mergedProjects = [...ownedData.content, ...sharedData.content];
+        const dedupedProjects = Array.from(
+          new Map(mergedProjects.map((project) => [project.id || project._id, project])).values()
+        );
+
         // Normalize project data to match Project type
-        const normalizedProjects = data.content.map((project) => ({
+        const normalizedProjects = dedupedProjects.map((project) => ({
           ...project,
           id: project.id || project._id || '',
           projectName: project.projectName || project.name || 'Unnamed Project',
@@ -108,8 +123,8 @@ export default function ProjectsPage() {
           },
         }));
         setProjects(normalizedProjects);
-        setTotalPages(data.totalPages || 1);
-        setTotalElements(data.totalElements || 0);
+        setTotalPages(Math.max(ownedData.totalPages || 1, sharedData.totalPages || 1));
+        setTotalElements((ownedData.totalElements || 0) + (sharedData.totalElements || 0));
         setRetryAttempt(0);
       } catch (err) {
         console.error('Error fetching projects:', err);

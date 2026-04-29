@@ -18,14 +18,19 @@ import {
   Stack,
   Button,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextareaAutosize,
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  PersonAdd as PersonAddIcon,
-  Email as EmailIcon,
-  FilterList as FilterListIcon,
+  Close as CloseIcon,
+  Send as SendIcon,
 } from '@mui/icons-material';
-import { getAllUsers } from '@/services/admin.service';
+import { communityService } from '@/services/community.service';
+import { messagingApi } from '@/services/messagingApi';
 import { User } from '@/types/user';
 
 export default function UsersPage() {
@@ -33,8 +38,13 @@ export default function UsersPage() {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [messageContent, setMessageContent] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -48,7 +58,7 @@ export default function UsersPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getAllUsers();
+      const data = await communityService.getCommunityUsers();
       setUsers(data);
       setFilteredUsers(data);
     } catch (err: any) {
@@ -56,6 +66,48 @@ export default function UsersPage() {
       setError(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openMessageDialog = (user: User) => {
+    setSelectedUser(user);
+    setMessageContent('');
+    setSuccess(null);
+    setError(null);
+    setMessageDialogOpen(true);
+  };
+
+  const closeMessageDialog = () => {
+    setMessageDialogOpen(false);
+    setSelectedUser(null);
+    setMessageContent('');
+    setSendingMessage(false);
+  };
+
+  const handleSendMessage = async () => {
+    if (!selectedUser) return;
+
+    const trimmedMessage = messageContent.trim();
+    if (!trimmedMessage) {
+      setError('Please enter a message before sending.');
+      return;
+    }
+
+    try {
+      setSendingMessage(true);
+      setError(null);
+      await messagingApi.sendTextMessage({
+        recipientId: selectedUser.id,
+        content: trimmedMessage,
+      });
+
+      setSuccess(`Message sent to ${selectedUser.username}.`);
+      closeMessageDialog();
+    } catch (err: any) {
+      console.error('Failed to send message:', err);
+      setError(err?.response?.data?.message || err.message || 'Failed to send message');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -145,6 +197,12 @@ export default function UsersPage() {
         {error && (
           <Alert severity="error" sx={{ mb: 3, borderRadius: 1 }}>
             {error}
+          </Alert>
+        )}
+
+        {success && (
+          <Alert severity="success" sx={{ mb: 3, borderRadius: 1 }}>
+            {success}
           </Alert>
         )}
 
@@ -312,8 +370,8 @@ export default function UsersPage() {
                     <Button
                       variant="outlined"
                       size="small"
-                      startIcon={<EmailIcon />}
-                      href={`mailto:${user.email}`}
+                      startIcon={<SendIcon />}
+                      onClick={() => openMessageDialog(user)}
                       sx={{
                         mt: 2,
                         textTransform: 'none',
@@ -327,7 +385,7 @@ export default function UsersPage() {
                         },
                       }}
                     >
-                      Contact
+                      Message
                     </Button>
                   </CardContent>
                 </Card>
@@ -342,6 +400,50 @@ export default function UsersPage() {
             Showing <strong>{filteredUsers.length}</strong> of <strong>{users.length}</strong> members
           </Typography>
         </Paper>
+
+        <Dialog open={messageDialogOpen} onClose={closeMessageDialog} fullWidth maxWidth="sm">
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Message {selectedUser?.username}</span>
+            <IconButton onClick={closeMessageDialog} size="small" aria-label="Close message dialog">
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" sx={{ color: '#586069', mb: 2 }}>
+              Send a direct message to {selectedUser?.email}.
+            </Typography>
+            <TextareaAutosize
+              minRows={6}
+              placeholder="Write your message..."
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #d0d7de',
+                fontFamily: 'inherit',
+                fontSize: '1rem',
+                outline: 'none',
+                resize: 'vertical',
+              }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button onClick={closeMessageDialog} disabled={sendingMessage}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleSendMessage}
+              disabled={sendingMessage || !messageContent.trim()}
+              startIcon={<SendIcon />}
+              sx={{ textTransform: 'none' }}
+            >
+              {sendingMessage ? 'Sending...' : 'Send message'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </Box>
   );

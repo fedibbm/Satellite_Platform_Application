@@ -89,8 +89,11 @@ export default function ProjectDetailPage() {
         sharingError,
         sharingSuccess,
         isSharing,
+        collaboratorPermissions,
+        setCollaboratorPermission,
         handleShareProject,
         handleUnshareProject,
+        handleUpdateCollaboratorPermission,
     } = useProjectSharing(projectId, setProject); // Pass setProject to update collaborators
 
     const {
@@ -187,8 +190,11 @@ export default function ProjectDetailPage() {
                         sharingError={sharingError}
                         sharingSuccess={sharingSuccess}
                         isSharing={isSharing}
+                        collaboratorPermissions={collaboratorPermissions}
+                        setCollaboratorPermission={setCollaboratorPermission}
                         handleShareProject={handleShareProject}
                         handleUnshareProject={handleUnshareProject}
+                        handleUpdateCollaboratorPermission={handleUpdateCollaboratorPermission}
                     />
                 </TabPanel>
 

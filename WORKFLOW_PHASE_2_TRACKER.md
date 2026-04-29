@@ -6,19 +6,19 @@
 
 ---
 
-## � What is Currently Missing (The Problem Statement)
+## Current State
 
-The MVP workflow feature has the visual UI and backend schema, but lacks the core execution capabilities to function in reality:
+The Phase 2 objectives are largely implemented in code:
 
-1. **Graph Execution (No DAG Traversal):** Workflows currently ignore the connections (edges) drawn by the user and execute sequentially based on array index. It cannot detect infinite loops, handle parallel branches, or route logic correctly.
-2. **Data Passing (No State Context):** The output of one node (e.g., satellite coordinates) is not forwarded as the input of the next node (e.g., image processor).
-3. **Microservice Integration (No API Calls):** No real HTTP calls are made to the GEE Service (Port 5000) or Image Processing Service (Port 8000). Node operations are currently simulated/mocked.
-4. **Synchronous Blocking (No Async/RabbitMQ):** Execution blocks the main thread. A long-running image processing task would time out the HTTP request. There is no background task execution or ability to pause/resume workflows.
-5. **Unimplemented Core Nodes:** Missing actual implementation for `GeeInputNodeExecutor` (Input), `ProcessingNodeExecutor` (Processing), and `DecisionNodeExecutor` (conditional branching).
+1. **Graph Execution:** DAG validation and topological planning are implemented.
+2. **Data Passing:** Node outputs and global variables are propagated through `NodeExecutionContext`.
+3. **Microservice Integration:** `DataInputNodeExecutor` and `ProcessingNodeExecutor` perform real integrations for core flows.
+4. **Asynchronous Execution:** Workflow execution is queued through RabbitMQ and processed by a listener.
+5. **Conditional Routing:** `DecisionNodeExecutor` exists and branch routing is applied with edge labels.
 
 ---
 
-## �📋 Master Roadmap & Status
+## 📋 Master Roadmap & Status
 
 ### Step 1: Graph Logic & Routing (DAG)
 **Status:** ✅ COMPLETED
@@ -33,17 +33,17 @@ The MVP workflow feature has the visual UI and backend schema, but lacks the cor
 - [x] Handle variable substitution / parameter mapping for node configurations.
 
 ### Step 3: Microservice Node Integration
-**Status:** ⏳ NOT STARTED
+**Status:** ✅ COMPLETED (core)
 - [x] Implement `GeeNodeExecutor` integrating with the Flask service (done via DataInputNodeExecutor) (Port 5000).
 - [x] Implement `ProcessingNodeExecutor` natively integrated with VegetationIndexService and FastAPI via multipart API.
 - [x] Ensure proper error handling and integration with backend image context parameters.
 
 ### Step 4: Asynchronous Execution & Awaiting (RabbitMQ)
-**Status:** ⏳ NOT STARTED
+**Status:** ✅ COMPLETED
 - [x] Integrate RabbitMQ for long-running node execution (Implemented in WorkflowExecutionService using RabbitTemplate and Queue listener).
 - [x] Implement node pausing (`WAITING` state) to free up backend threads (De-prioritized as RabbitMQ listener threads gracefully handle synchronous Python processing for now, which takes <20s).
 - [x] Create RabbitMQ listeners to resume workflows upon microservice completion/callbacks (Implemented using WorkflowRabbitMQConfig).
-- [ ] Implement `DecisionNodeExecutor` for conditional branching based on outputs.
+- [x] Implement `DecisionNodeExecutor` for conditional branching based on outputs.
 
 ---
 
@@ -63,10 +63,20 @@ The MVP workflow feature has the visual UI and backend schema, but lacks the cor
 
 
 ### Step 5: Output Storage Integration
-**Status:** ⏳ NOT STARTED
+**Status:** ✅ COMPLETED (baseline)
 - [x] Connect OutputNodeExecutor to physically save generated runtime result arrays (Base64 images) to the user's project storage via ProcessingResultsService.
 
 ### Step 6: Realtime Frontend Notifications (WebSocket)
-**Status:** ⏳ NOT STARTED
+**Status:** ✅ COMPLETED
 - [x] Implement SimpMessageTemplate broadcasting into WorkflowExecutionService.
-- [x] Subscrible STOMP topics in React UI to display live execution status updates dynamically out-of-band.
+- [x] Subscribe to STOMP topics in React UI to display live execution status updates dynamically out-of-band.
+
+---
+
+## Remaining Work (Post-Phase-2 Hardening)
+
+1. Run nodes concurrently inside each topological stage.
+2. Replace simplified decision expression evaluation with a robust parser.
+3. Add execution cancellation/retry/backoff and DLQ policy.
+4. Add scheduled trigger runtime (cron/automation).
+5. Expand placeholder processing modes (`water-bodies`, `change-detection`).

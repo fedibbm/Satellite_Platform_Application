@@ -91,7 +91,7 @@ public class DashboardService {
 
         stats.setTotalProjects(ownedProjects.size());
         stats.setSharedByUserCount(ownedProjects.stream().filter(p -> !p.getSharedUsers().isEmpty()).count());
-        stats.setSharedWithUserCount(projectRepository.countBySharedUsersContainsKey(user));
+        stats.setSharedWithUserCount(projectRepository.countBySharedUsersContainsKey(user.getId()));
         stats.setRecentlyAccessedProjects(calculateRecentlyAccessedProjects(ownedProjects, user));
         logger.info("Project statistics calculated.");
 
@@ -171,7 +171,7 @@ public class DashboardService {
         User user) {
         logger.debug("Calculating recently accessed projects...");
         // Combine owned and shared, sort by last accessed, take limit
-        List<Project> sharedProjects = projectRepository.findBySharedUsersContainsKey(user);
+        List<Project> sharedProjects = projectRepository.findBySharedUsersContainsKey(user.getId());
         Set<Project> allAccessibleProjects = new HashSet<>(ownedProjects);
         allAccessibleProjects.addAll(sharedProjects);
 
