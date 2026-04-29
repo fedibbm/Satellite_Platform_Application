@@ -2,6 +2,16 @@
 
 A collaborative web platform for satellite imagery analysis and geospatial data processing using microservices architecture.
 
+## 📚 Documentation Map
+
+- Master index: [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)
+- Architecture map: [docs/ARCHITECTURE_KNOWLEDGE_BASE.md](docs/ARCHITECTURE_KNOWLEDGE_BASE.md)
+- Backend API survey: [docs/BACKEND_API_SURVEY.md](docs/BACKEND_API_SURVEY.md)
+- Frontend routes/services map: [docs/FRONTEND_ROUTE_SERVICE_MAP.md](docs/FRONTEND_ROUTE_SERVICE_MAP.md)
+- End-to-end flow guide: [docs/END_TO_END_FLOWS.md](docs/END_TO_END_FLOWS.md)
+- External services API map: [docs/EXTERNAL_SERVICES_API_MAP.md](docs/EXTERNAL_SERVICES_API_MAP.md)
+- Workflow engine docs: [WORKFLOW_IMPLEMENTATION.md](WORKFLOW_IMPLEMENTATION.md), [WORKFLOW_QUICK_START.md](WORKFLOW_QUICK_START.md), [WORKFLOW_PHASE_2_TRACKER.md](WORKFLOW_PHASE_2_TRACKER.md)
+
 ## 🏗️ Architecture Overview
 
 This project consists of **4 independent microservices**:

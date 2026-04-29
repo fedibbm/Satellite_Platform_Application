@@ -34,6 +34,8 @@ This index is a navigation map for the project documentation and code entry poin
 - System architecture map: [ARCHITECTURE_KNOWLEDGE_BASE.md](ARCHITECTURE_KNOWLEDGE_BASE.md)
 - Backend API survey: [BACKEND_API_SURVEY.md](BACKEND_API_SURVEY.md)
 - Frontend route/service map: [FRONTEND_ROUTE_SERVICE_MAP.md](FRONTEND_ROUTE_SERVICE_MAP.md)
+- End-to-end flow guide: [END_TO_END_FLOWS.md](END_TO_END_FLOWS.md)
+- External services map: [EXTERNAL_SERVICES_API_MAP.md](EXTERNAL_SERVICES_API_MAP.md)
 
 ## 6) Key Code Entry Points
 
