@@ -1,0 +1,143 @@
+### Admin Management API Tests
+### Base URL: http://localhost:8080
+
+### Prerequisites:
+### - Backend running on port 8080
+### - User with ROLE_ADMIN logged in
+### - Access token available in cookies (HTTP-only)
+
+### ===================== USER MANAGEMENT =====================
+
+### Create a new user (Admin only)
+POST http://localhost:8080/api/admin/users
+?username=newuser&email=newuser@example.com&password=SecurePass123!&roles=THEMATICIAN,USER
+Content-Type: application/json
+
+### Get all users
+GET http://localhost:8080/api/admin/users
+Content-Type: application/json
+
+### Update an existing user (use ObjectId from GET request)
+PUT http://localhost:8080/api/admin/users/{{userId}}
+?username=updateduser&email=updated@example.com&roles=THEMATICIAN
+Content-Type: application/json
+
+### Reset a user's password
+POST http://localhost:8080/api/admin/users/{{userId}}/reset-password
+?newPassword=NewSecurePassword123!
+Content-Type: application/json
+
+### Lock a user account (disable)
+POST http://localhost:8080/api/admin/users/{{userId}}/true
+Content-Type: application/json
+
+### Unlock a user account (enable)
+POST http://localhost:8080/api/admin/users/{{userId}}/false
+Content-Type: application/json
+
+### Delete a user
+DELETE http://localhost:8080/api/admin/users/{{userId}}
+Content-Type: application/json
+
+### ===================== ROLE MANAGEMENT =====================
+
+### Get all roles
+GET http://localhost:8080/api/admin/roles
+Content-Type: application/json
+
+### Create a new role
+POST http://localhost:8080/api/admin/roles
+Content-Type: application/json
+
+{
+  "roleName": "CUSTOM_ROLE"
+}
+
+### Get role by name
+GET http://localhost:8080/api/admin/roles/CUSTOM_ROLE
+Content-Type: application/json
+
+### Delete a role
+DELETE http://localhost:8080/api/admin/roles/CUSTOM_ROLE
+Content-Type: application/json
+
+### ===================== CONFIGURATION MANAGEMENT =====================
+
+### Get all manageable configuration properties
+GET http://localhost:8080/api/admin/config/manageable
+Content-Type: application/json
+
+### Update a configuration property
+PUT http://localhost:8080/api/admin/config/manageable
+Content-Type: application/json
+
+{
+  "key": "app.name",
+  "value": "Satellite Platform - New Name"
+}
+
+### Reset a configuration property to default (null value)
+PUT http://localhost:8080/api/admin/config/manageable
+Content-Type: application/json
+
+{
+  "key": "app.name",
+  "value": null
+}
+
+### ===================== AUDIT LOGS =====================
+
+### Get latest audit logs (defaults to 100 lines)
+GET http://localhost:8080/api/admin/audit/latest
+Content-Type: application/json
+
+### Get latest N audit logs
+GET http://localhost:8080/api/admin/audit/latest?lines=50
+Content-Type: application/json
+
+### Filter audit logs by username
+GET http://localhost:8080/api/admin/audit/latest?username=admin&lines=50
+Content-Type: application/json
+
+### Filter audit logs by action
+GET http://localhost:8080/api/admin/audit/latest?action=LOGIN_SUCCESS&lines=100
+Content-Type: application/json
+
+### Get audit logs for a specific date (yyyy-MM-dd)
+GET http://localhost:8080/api/admin/audit/by-date/2025-05-03
+Content-Type: application/json
+
+### Get audit logs for a date range
+GET http://localhost:8080/api/admin/audit/by-range?startDate=2025-05-01&endDate=2025-05-03
+Content-Type: application/json
+
+### Filter by username and action on a specific date
+GET http://localhost:8080/api/admin/audit/by-date/2025-05-03?username=admin&action=LOGIN_SUCCESS
+Content-Type: application/json
+
+### List available audit log dates
+GET http://localhost:8080/api/admin/audit/available-dates
+Content-Type: application/json
+
+### ===================== ADMIN SIGNUP REQUESTS =====================
+
+### Get pending admin signup requests
+GET http://localhost:8080/api/admin/signup-requests/pending
+Content-Type: application/json
+
+### Approve an admin signup request (creates user with ADMIN role)
+POST http://localhost:8080/api/admin/signup-requests/{{requestId}}/approve
+Content-Type: application/json
+
+### Reject an admin signup request
+POST http://localhost:8080/api/admin/signup-requests/{{requestId}}/reject
+Content-Type: application/json
+
+### ===================== NOTES =====================
+###
+### 1. Replace {{userId}} and {{requestId}} with actual ObjectIds from responses
+### 2. All endpoints require ROLE_ADMIN (enforced by @PreAuthorize)
+### 3. Tokens are sent via HTTP-only cookies automatically
+### 4. Audit logs support filtering by username and action
+### 5. Configuration updates accept null to reset to defaults
+### 6. User roles must exist before assigning to users

@@ -185,6 +185,67 @@ docker run --rm \
   alpine tar czf /backup/mongodb-backup.tar.gz /data
 ```
 
+## Admin Interface
+
+The Admin Dashboard is **exclusively for users with ROLE_ADMIN**. When admins log in, they are automatically redirected to `/admin` instead of `/dashboard`.
+
+### Admin Pages & Features
+
+| Page | URL | Function |
+|------|-----|----------|
+| Dashboard | `/admin` | Overview & statistics (if dashboard page exists) |
+| User Management | `/admin/users` | Create, edit, delete users; lock/unlock accounts; reset passwords; approve/reject admin signup requests |
+| Role Management | `/admin/roles` | Create, view, delete roles; assign authorities |
+| System Configuration | `/admin/config` | Manage runtime configuration properties |
+| Audit Logs | `/admin/audit` | View audit logs by date range, username, action; real-time log streaming |
+| Storage Management | `/admin/storage` | Monitor and manage system storage usage |
+| Task Management | `/admin/tasks` | Monitor long-running tasks; cancel tasks |
+| Project Management | `/admin/projects` | View and manage all projects across the system |
+
+### Admin API Endpoints
+
+All endpoints require `ROLE_ADMIN` and are prefixed with `/api/admin`:
+
+**User Management:**
+- `GET /api/admin/users` - List all users
+- `POST /api/admin/users?username=...&email=...&password=...&roles=...` - Create user
+- `PUT /api/admin/users/{userId}?username=...&email=...&roles=...` - Update user
+- `POST /api/admin/users/{userId}/reset-password?newPassword=...` - Reset password
+- `POST /api/admin/users/{userId}/{true|false}` - Lock/unlock account
+- `DELETE /api/admin/users/{userId}` - Delete user
+
+**Role Management:**
+- `GET /api/admin/roles` - List all roles
+- `POST /api/admin/roles` - Create role
+- `DELETE /api/admin/roles/{roleName}` - Delete role
+
+**Configuration:**
+- `GET /api/admin/config/manageable` - Get manageable config properties
+- `PUT /api/admin/config/manageable` - Update config property
+
+**Audit Logs:**
+- `GET /api/admin/audit/latest?lines=100&username=...&action=...` - Get latest logs
+- `GET /api/admin/audit/by-date/{yyyy-MM-dd}` - Logs for specific date
+- `GET /api/admin/audit/by-range?startDate=...&endDate=...` - Logs for date range
+- `GET /api/admin/audit/available-dates` - List dates with logs
+
+**Admin Signup Requests:**
+- `GET /api/admin/signup-requests/pending` - Get pending admin requests
+- `POST /api/admin/signup-requests/{requestId}/approve` - Approve request
+- `POST /api/admin/signup-requests/{requestId}/reject` - Reject request
+
+### Testing Admin Features
+
+1. Use REST client in `Backend/http/admin/AdminManagement.http`
+2. Login as an admin user from http://localhost:3000/auth/login
+3. Navigate to Admin Dashboard from header menu or visit http://localhost:3000/admin
+
+### How Admins are Identified
+
+- Users with `ROLE_ADMIN` in their roles array
+- After login, admin users see "Admin" link in header navigation
+- Admin layout enforces role-based access control
+
 ## Development Mode
 
 ```bash

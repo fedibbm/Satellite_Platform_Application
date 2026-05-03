@@ -14,7 +14,7 @@ export default function AdminLayout({
 
   React.useEffect(() => {
     if (!loading && (!user || !user.roles.includes('ADMIN'))) {
-      router.push('/auth/signin');
+      router.push('/auth/login');
     }
   }, [user, loading, router]);
 

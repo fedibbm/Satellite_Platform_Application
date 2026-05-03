@@ -23,16 +23,20 @@ export default function Login() {
     setLoading(true)
 
     try {
-      await authService.login({ username: formData.username, password: formData.password })
+      const resp: any = await authService.login({ username: formData.username, password: formData.password })
       setSuccess('Login successful! Redirecting...')
-      
+
       // Trigger a storage event to notify other components (like Header) to update
       window.dispatchEvent(new Event('storage'))
-      
+
+      // Decide redirect based on roles: admins go to admin interface
+      const roles: string[] = resp?.roles || JSON.parse(localStorage.getItem('userRoles') || '[]')
+      const redirectPath = Array.isArray(roles) && roles.includes('ADMIN') ? '/admin' : '/dashboard'
+
       // Use window.location.href for full page navigation with reload
       setTimeout(() => {
-        window.location.href = '/dashboard'
-      }, 1500)
+        window.location.href = redirectPath
+      }, 1000)
     } catch (error: any) {
       console.error('Login error:', error)
       setError(error.message || 'Invalid credentials. Please try again.')

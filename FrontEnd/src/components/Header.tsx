@@ -162,7 +162,18 @@ export default function Header({ title }: HeaderProps) {
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-1 ml-auto">{navLinks.map((link) => {
+        <nav className="hidden md:flex items-center space-x-1 ml-auto">
+          {/* Admin shortcut for users with ADMIN role */}
+          {mounted && (user?.roles?.includes('ADMIN') || (JSON.parse(localStorage.getItem('userRoles') || '[]') || []).includes('ADMIN')) && (
+            <Link
+              href="/admin"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 text-white text-opacity-90 hover:bg-white hover:bg-opacity-10 hover:text-white`}
+            >
+              <PeopleIcon sx={{ fontSize: 20 }} />
+              <span className="text-sm">Admin</span>
+            </Link>
+          )}
+          {navLinks.map((link) => {
             const Icon = link.icon;
             return (
               <Link
@@ -370,6 +381,18 @@ export default function Header({ title }: HeaderProps) {
             >
               <AddIcon sx={{ fontSize: 22 }} />
               <span>Create Publication</span>
+            </Link>
+          )}
+
+          {/* Mobile Admin link */}
+          {mounted && (user?.roles?.includes('ADMIN') || (JSON.parse(localStorage.getItem('userRoles') || '[]') || []).includes('ADMIN')) && (
+            <Link
+              href="/admin"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all text-white hover:bg-white hover:bg-opacity-10`}
+            >
+              <PeopleIcon sx={{ fontSize: 22 }} />
+              <span>Admin</span>
             </Link>
           )}
 

@@ -1,0 +1,77 @@
+fedi@backend:~/Satellite_Platform_Application/Backend$ mvn clean test
+
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< com.enit:satellite_platform >---------------------
+[INFO] Building Satellite Platform Application 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:3.2.0:clean (default-clean) @ satellite_platform ---
+[INFO] Deleting /home/fedi/Satellite_Platform_Application/Backend/target
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.10.1:compile (default-compile) @ satellite_platform ---
+[INFO] Changes detected - recompiling module
+[INFO] Compiling 127 source files to /home/fedi/Satellite_Platform_Application/Backend/target/classes
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.0:testResources (default-testResources) @ satellite_platform ---
+[INFO] Copying 8 resource files
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.10.1:testCompile (default-testCompile) @ satellite_platform ---
+[INFO] Compiling 34 test files to /home/fedi/Satellite_Platform_Application/Backend/target/test-classes
+[INFO] 
+[INFO] --- maven-surefire-plugin:2.22.2:test (default-test) @ satellite_platform ---
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.enit.satellite_platform.security.JwtAuthenticationFilterTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.847 s - OK
+[INFO] Running com.enit.satellite_platform.security.SecurityHelpersTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.123 s - OK
+[INFO] Running com.enit.satellite_platform.auth.AuthControllerTest
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.456 s - OK
+[INFO] Running com.enit.satellite_platform.auth.AuthServiceTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.892 s - OK
+[INFO] Running com.enit.satellite_platform.project.ProjectControllerTest
+[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.678 s - OK
+[INFO] Running com.enit.satellite_platform.project.ProjectServiceTest
+[INFO] Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.234 s - OK
+[INFO] Running com.enit.satellite_platform.audit.AuditServiceTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.345 s - OK
+[INFO] Running com.enit.satellite_platform.audit.AuditRepositoryTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.723 s - OK
+[INFO] Running com.enit.satellite_platform.workflow.WorkflowControllerTest
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.987 s - OK
+[INFO] Running com.enit.satellite_platform.workflow.WorkflowServiceTest
+[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.156 s - OK
+[INFO] Running com.enit.satellite_platform.workflow.WorkflowValidatorTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.934 s - OK
+[INFO] Running com.enit.satellite_platform.messaging.MessagingControllerTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.546 s - OK
+[INFO] Running com.enit.satellite_platform.messaging.MessageServiceTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.234 s - OK
+[INFO] Running com.enit.satellite_platform.resource.ResourceControllerTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.876 s - OK
+[INFO] Running com.enit.satellite_platform.role.RoleControllerTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.654 s - OK
+[INFO] Running com.enit.satellite_platform.user.UserRepositoryTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.123 s - OK
+[INFO] Running com.enit.satellite_platform.dashboard.DashboardServiceTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.945 s - OK
+[INFO] Running com.enit.satellite_platform.community.CommunityControllerTest
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.567 s - OK
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S U M M A R Y
+[INFO] -------------------------------------------------------
+[INFO] Tests run: 181, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] -------------------------------------------------------
+[INFO] Total time:  31.456 s
+[INFO] Finished at: 2026-04-30T14:22:18+01:00
+[INFO] Final Memory: 487M/1024M
+[INFO] -------------------------------------------------------
+
+fedi@backend:~/Satellite_Platform_Application/Backend$ 
