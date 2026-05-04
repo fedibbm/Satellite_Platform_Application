@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.enit.satellite_platform.exceptions.DuplicationException;
+import com.enit.satellite_platform.modules.user_management.admin_privileges.dto.DashboardSummaryDto;
 import com.enit.satellite_platform.modules.user_management.admin_privileges.repository.AdminSignupRequestRepository;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.AdminSignupRequest;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.Authority;
@@ -21,6 +22,7 @@ import com.enit.satellite_platform.modules.user_management.management_cvore_serv
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.services.RoleService;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.services.UserManagementCoreService;
 import com.enit.satellite_platform.modules.user_management.normal_user_service.repositories.UserRepository;
+import com.enit.satellite_platform.modules.project_management.repositories.ProjectRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -43,6 +45,9 @@ public class AdminServices {
 
     @Autowired
     private AdminSignupRequestRepository adminSignupRequestRepository;
+
+    @Autowired
+    private ProjectRepository projectRepository;
 
     @Autowired
     private AuditLogService auditLogService;
@@ -374,6 +379,18 @@ public class AdminServices {
         logger.info("Admin signup request {} rejected.", requestId);
         // Audit Log
         auditLogService.logAuditEvent(getCurrentUsername(), "ADMIN_REQUEST_REJECTED", "Rejected request ID: " + requestId + " for email: " + request.getEmail());
+    }
+
+    /**
+     * Retrieves a summary of dashboard statistics.
+     *
+     * @return A DashboardSummaryDto containing total users, total projects, and pending signups.
+     */
+    public DashboardSummaryDto getDashboardSummary() {
+        long totalUsers = userRepository.count();
+        long totalProjects = projectRepository.count();
+        long pendingSignups = adminSignupRequestRepository.findByStatus(AdminSignupRequest.ApprovalStatus.PENDING).size();
+        return new DashboardSummaryDto(totalUsers, totalProjects, pendingSignups);
     }
 
     /**

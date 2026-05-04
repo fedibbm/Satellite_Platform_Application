@@ -104,8 +104,12 @@ public class UserManagementCoreService {
      */
     public void checkEmailDuplication(String email, ObjectId existingUserId) {
         Optional<User> userByEmail = userRepository.findByEmail(email);
-        if (userByEmail.isPresent() && (existingUserId == null || !userByEmail.get().getId().equals(existingUserId))) {
-            throw new DuplicationException("Email '" + email + "' is already in use!");
+        if (userByEmail.isPresent()) {
+            String foundUserId = userByEmail.get().getId();
+            String existingIdStr = existingUserId != null ? existingUserId.toString() : null;
+            if (existingIdStr == null || !foundUserId.equals(existingIdStr)) {
+                throw new DuplicationException("Email '" + email + "' is already in use!");
+            }
         }
     }
 

@@ -1,18 +1,40 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+function decodeJwtPayload(token: string): any {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = parts[1]
+    const decoded = atob(payload)
+    return JSON.parse(decoded)
+  } catch {
+    return null
+  }
+}
+
 export function middleware(request: NextRequest) {
-  // Get the access token from cookies
   const token = request.cookies.get('accessToken')?.value
   const isAuthenticated = !!token
   
-  // Clone the request headers
   const requestHeaders = new Headers(request.headers)
-  
-  // Add custom header with auth status for the page to read
   requestHeaders.set('x-user-authenticated', isAuthenticated ? 'true' : 'false')
   
-  // Continue with the modified headers
+  // Protect /admin routes: only users with ADMIN role can access
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    if (!isAuthenticated) {
+      return NextResponse.redirect(new URL('/auth/login', request.url))
+    }
+    
+    const decoded = decodeJwtPayload(token!)
+    const roles: string[] = decoded?.roles || []
+    const isAdmin = roles.some((role: string) => role.includes('ADMIN'))
+    
+    if (!isAdmin) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+  }
+  
   return NextResponse.next({
     request: {
       headers: requestHeaders,
@@ -20,15 +42,8 @@ export function middleware(request: NextRequest) {
   })
 }
 
-// Run middleware on all pages
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

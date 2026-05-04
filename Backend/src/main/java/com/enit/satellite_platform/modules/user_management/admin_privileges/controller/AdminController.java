@@ -3,6 +3,7 @@
 import com.enit.satellite_platform.config.dto.ManageablePropertyDto;
 import com.enit.satellite_platform.config.dto.UpdatePropertyRequestDto;
 import com.enit.satellite_platform.exceptions.DuplicationException;
+import com.enit.satellite_platform.modules.user_management.admin_privileges.dto.DashboardSummaryDto;
 import com.enit.satellite_platform.modules.user_management.admin_privileges.services.AdminServices;
 import com.enit.satellite_platform.modules.user_management.admin_privileges.services.ConfigManagementService;
 import com.enit.satellite_platform.modules.user_management.management_cvore_service.entities.AdminSignupRequest;
@@ -413,6 +414,30 @@ public class AdminController {
             // Log the exception details
             return ResponseEntity.internalServerError()
                     .body(new GenericResponse<>("ERROR", "An unexpected error occurred while rejecting request: " + requestId));
+        }
+    }
+
+    @Operation(summary = "Get dashboard summary",
+            description = "Retrieves summary statistics for the admin dashboard including total users, projects, and pending signups.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved dashboard summary",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = DashboardSummaryDto.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden - User lacks ADMIN role",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = GenericResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = GenericResponse.class)))
+    })
+    @GetMapping("/dashboard/summary")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<DashboardSummaryDto> getDashboardSummary() {
+        try {
+            DashboardSummaryDto summary = adminServices.getDashboardSummary();
+            return ResponseEntity.ok(summary);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

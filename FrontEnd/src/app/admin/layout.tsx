@@ -13,7 +13,7 @@ export default function AdminLayout({
   const router = useRouter();
 
   React.useEffect(() => {
-    if (!loading && (!user || !user.roles.includes('ADMIN'))) {
+    if (!loading && (!user || !user.roles.some(r => r.includes('ADMIN')))) {
       router.push('/auth/login');
     }
   }, [user, loading, router]);
@@ -22,7 +22,7 @@ export default function AdminLayout({
     return <div>Loading...</div>;
   }
 
-  if (!user || !user.roles.includes('ADMIN')) {
+  if (!user || !user.roles.some(r => r.includes('ADMIN'))) {
     return null;
   }
 

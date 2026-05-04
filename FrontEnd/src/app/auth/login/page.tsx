@@ -31,7 +31,7 @@ export default function Login() {
 
       // Decide redirect based on roles: admins go to admin interface
       const roles: string[] = resp?.roles || JSON.parse(localStorage.getItem('userRoles') || '[]')
-      const redirectPath = Array.isArray(roles) && roles.includes('ADMIN') ? '/admin' : '/dashboard'
+      const redirectPath = Array.isArray(roles) && roles.some(r => r.includes('ADMIN')) ? '/admin' : '/dashboard'
 
       // Use window.location.href for full page navigation with reload
       setTimeout(() => {

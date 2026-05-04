@@ -12,7 +12,7 @@ export default function AdminIndex() {
     if (loading) return
 
     const roles: string[] = user?.roles || JSON.parse(localStorage.getItem('userRoles') || '[]')
-    if (Array.isArray(roles) && roles.includes('ADMIN')) {
+    if (Array.isArray(roles) && roles.some(r => r.includes('ADMIN'))) {
       router.replace('/admin/dashboard')
     } else {
       router.replace('/auth/login')

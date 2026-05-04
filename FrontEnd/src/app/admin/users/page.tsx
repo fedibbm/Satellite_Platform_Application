@@ -266,7 +266,7 @@ export default function UserManagement() {
               <tr key={user.id}>
                 <td className="px-6 py-4 whitespace-nowrap">{user.username}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{user.roles.join(', ')}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{user.roles?.join(', ') || 'No roles'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     user.enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'

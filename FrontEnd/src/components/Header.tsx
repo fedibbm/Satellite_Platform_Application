@@ -164,7 +164,7 @@ export default function Header({ title }: HeaderProps) {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1 ml-auto">
           {/* Admin shortcut for users with ADMIN role */}
-          {mounted && (user?.roles?.includes('ADMIN') || (JSON.parse(localStorage.getItem('userRoles') || '[]') || []).includes('ADMIN')) && (
+          {mounted && (user?.roles?.some((r: string) => r.includes('ADMIN')) || (JSON.parse(localStorage.getItem('userRoles') || '[]') || []).some((r: string) => r.includes('ADMIN'))) && (
             <Link
               href="/admin"
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 text-white text-opacity-90 hover:bg-white hover:bg-opacity-10 hover:text-white`}
@@ -385,7 +385,7 @@ export default function Header({ title }: HeaderProps) {
           )}
 
           {/* Mobile Admin link */}
-          {mounted && (user?.roles?.includes('ADMIN') || (JSON.parse(localStorage.getItem('userRoles') || '[]') || []).includes('ADMIN')) && (
+          {mounted && (user?.roles?.some((r: string) => r.includes('ADMIN')) || (JSON.parse(localStorage.getItem('userRoles') || '[]') || []).some((r: string) => r.includes('ADMIN'))) && (
             <Link
               href="/admin"
               onClick={() => setIsMobileMenuOpen(false)}
