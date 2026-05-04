@@ -264,25 +264,45 @@ export default function WorkflowDetailPage() {
           <div className="flex-1 p-6 overflow-y-auto">
             <h2 className="text-xl font-semibold mb-4">Version History</h2>
             <div className="space-y-4">
-              {workflow.versions.map((version) => (
-                <div
-                  key={version.version}
-                  className="bg-white rounded-lg p-4 border border-gray-200"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold">{version.version}</span>
-                    {version.version === workflow.currentVersion && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                        Current
-                      </span>
+              {workflow.versions
+                .sort((a, b) => b.version.localeCompare(a.version))
+                .map((version) => (
+                  <div
+                    key={version.version}
+                    className="bg-white rounded-lg p-4 border border-gray-200 flex items-start justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold">{version.version}</span>
+                        {version.version === workflow.currentVersion && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">{version.changelog || 'No changelog'}</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {new Date(version.createdAt).toLocaleString()} by {version.createdBy}
+                      </p>
+                    </div>
+                    {version.version !== workflow.currentVersion && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Revert to ${version.version}? The current version will be preserved but will no longer be active.`)) return;
+                          try {
+                            await workflowService.revertToVersion(workflowId, version.version);
+                            await loadWorkflow(false);
+                          } catch (error: any) {
+                            alert(error.message || 'Failed to revert version');
+                          }
+                        }}
+                        className="shrink-0 px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Revert to this version
+                      </button>
                     )}
                   </div>
-                  <p className="text-sm text-gray-600">{version.changelog || 'No changelog'}</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {new Date(version.createdAt).toLocaleString()} by {version.createdBy}
-                  </p>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         )}

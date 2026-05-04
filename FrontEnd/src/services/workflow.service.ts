@@ -1,4 +1,4 @@
-import { Workflow, WorkflowExecution, CreateWorkflowData, UpdateWorkflowData } from '@/types/workflow';
+import { Workflow, WorkflowExecution, WorkflowVersion, CreateWorkflowData, UpdateWorkflowData } from '@/types/workflow';
 import { httpClient } from '@/utils/api/http-client';
 
 export const workflowService = {
@@ -66,6 +66,19 @@ export const workflowService = {
     const response = await httpClient.post(`/api/workflows/${id}/copy?targetProjectId=${targetProjectId}`, {});
     if (!response?.data) {
       throw new Error('Failed to copy workflow');
+    }
+    return response.data;
+  },
+
+  async getWorkflowVersions(id: string): Promise<WorkflowVersion[]> {
+    const response = await httpClient.get(`/api/workflows/${id}/versions`);
+    return response?.data || [];
+  },
+
+  async revertToVersion(id: string, version: string): Promise<Workflow> {
+    const response = await httpClient.post(`/api/workflows/${id}/revert`, { version });
+    if (!response?.data) {
+      throw new Error('Failed to revert workflow');
     }
     return response.data;
   }

@@ -34,6 +34,7 @@ export interface WorkflowVersion {
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   changelog?: string;
+  isCurrent?: boolean;
 }
 
 export interface WorkflowExecution {

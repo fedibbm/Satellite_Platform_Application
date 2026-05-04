@@ -248,6 +248,39 @@ public class WorkflowService {
         logger.info("Workflow deleted: {}", id);
     }
 
+    public WorkflowDTO revertToVersion(String id, String targetVersion, String userEmail) {
+        logger.info("Reverting workflow: {} to version: {} for user: {}", id, targetVersion, userEmail);
+
+        Workflow workflow = workflowRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Workflow not found"));
+
+        User user = getUser(userEmail);
+        checkProjectAccess(workflow, user, PermissionLevel.EDITOR);
+
+        boolean versionExists = workflow.getVersions().stream()
+            .anyMatch(v -> v.getVersion().equals(targetVersion));
+
+        if (!versionExists) {
+            throw new RuntimeException("Version " + targetVersion + " not found. Available versions: " +
+                workflow.getVersions().stream()
+                    .map(WorkflowVersion::getVersion)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("none"));
+        }
+
+        if (targetVersion.equals(workflow.getCurrentVersion())) {
+            throw new RuntimeException("Workflow is already at version " + targetVersion);
+        }
+
+        workflow.setCurrentVersion(targetVersion);
+        workflow.setUpdatedAt(LocalDateTime.now());
+
+        Workflow savedWorkflow = workflowRepository.save(workflow);
+        logger.info("Workflow {} reverted to version: {}", id, targetVersion);
+
+        return workflowMapper.toDTO(savedWorkflow);
+    }
+
     private String generateNextVersion(String currentVersion) {
         String numericPart = currentVersion.substring(1);
         String[] parts = numericPart.split("\\.");

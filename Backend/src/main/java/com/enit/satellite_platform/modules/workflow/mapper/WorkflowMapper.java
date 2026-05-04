@@ -2,8 +2,10 @@ package com.enit.satellite_platform.modules.workflow.mapper;
 
 import com.enit.satellite_platform.modules.workflow.dto.WorkflowDTO;
 import com.enit.satellite_platform.modules.workflow.dto.WorkflowExecutionDTO;
+import com.enit.satellite_platform.modules.workflow.dto.WorkflowVersionDTO;
 import com.enit.satellite_platform.modules.workflow.entities.Workflow;
 import com.enit.satellite_platform.modules.workflow.entities.WorkflowExecution;
+import com.enit.satellite_platform.modules.workflow.entities.WorkflowVersion;
 import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +62,23 @@ public class WorkflowMapper {
         dto.setTriggeredBy(execution.getTriggeredBy());
         dto.setLogs(execution.getLogs());
         dto.setResults(execution.getResults());
+
+        return dto;
+    }
+
+    public WorkflowVersionDTO toVersionDTO(WorkflowVersion version, String currentVersion) {
+        if (version == null) {
+            return null;
+        }
+
+        WorkflowVersionDTO dto = new WorkflowVersionDTO();
+        dto.setVersion(version.getVersion());
+        dto.setCreatedAt(version.getCreatedAt());
+        dto.setCreatedBy(version.getCreatedBy());
+        dto.setNodes(version.getNodes());
+        dto.setEdges(version.getEdges());
+        dto.setChangelog(version.getChangelog());
+        dto.setCurrent(version.getVersion().equals(currentVersion));
 
         return dto;
     }

@@ -1,6 +1,7 @@
 package com.enit.satellite_platform.modules.workflow.controllers;
 
 import com.enit.satellite_platform.modules.workflow.dto.*;
+import com.enit.satellite_platform.modules.workflow.mapper.WorkflowMapper;
 import com.enit.satellite_platform.modules.workflow.services.WorkflowExecutionService;
 import com.enit.satellite_platform.modules.workflow.services.WorkflowService;
 import com.enit.satellite_platform.shared.dto.GenericResponse;
@@ -17,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/workflows")
@@ -30,6 +32,9 @@ public class WorkflowController {
 
     @Autowired
     private WorkflowExecutionService executionService;
+
+    @Autowired
+    private WorkflowMapper workflowMapper;
 
     private String getCurrentUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -192,6 +197,46 @@ public class WorkflowController {
         } catch (Exception e) {
             logger.error("Error fetching execution: {}", executionId, e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new GenericResponse<>("error", e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/{id}/versions")
+    @Operation(summary = "Get all versions of a workflow")
+    public ResponseEntity<GenericResponse<List<WorkflowVersionDTO>>> getWorkflowVersions(@PathVariable String id) {
+        try {
+            String userEmail = getCurrentUserEmail();
+            WorkflowDTO workflow = workflowService.getWorkflowById(id, userEmail);
+            String currentVersion = workflow.getCurrentVersion();
+            List<WorkflowVersionDTO> versions = workflow.getVersions().stream()
+                .map(v -> workflowMapper.toVersionDTO(v, currentVersion))
+                .toList();
+            return ResponseEntity.ok(new GenericResponse<>("success", "Versions retrieved successfully", versions));
+        } catch (Exception e) {
+            logger.error("Error fetching versions for workflow: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new GenericResponse<>("error", e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/{id}/revert")
+    @Operation(summary = "Revert workflow to a previous version")
+    public ResponseEntity<GenericResponse<WorkflowDTO>> revertToVersion(
+            @PathVariable String id,
+            @RequestBody Map<String, String> request) {
+        try {
+            String userEmail = getCurrentUserEmail();
+            String targetVersion = request.get("version");
+            if (targetVersion == null || targetVersion.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(new GenericResponse<>("error", "'version' field is required", null));
+            }
+            WorkflowDTO workflow = workflowService.revertToVersion(id, targetVersion, userEmail);
+            return ResponseEntity.ok(new GenericResponse<>("success",
+                    "Workflow reverted to " + targetVersion + " successfully", workflow));
+        } catch (Exception e) {
+            logger.error("Error reverting workflow: {} to version: {}", id, request.get("version"), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new GenericResponse<>("error", e.getMessage(), null));
         }
     }
