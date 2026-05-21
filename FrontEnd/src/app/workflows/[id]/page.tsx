@@ -265,7 +265,19 @@ export default function WorkflowDetailPage() {
             <h2 className="text-xl font-semibold mb-4">Version History</h2>
             <div className="space-y-4">
               {workflow.versions
-                .sort((a, b) => b.version.localeCompare(a.version))
+                .sort((a, b) => {
+                  const parse = (v: string) => {
+                    const nums = v.replace(/^v/, '').split('.').map(Number);
+                    return nums;
+                  };
+                  const aParts = parse(a.version);
+                  const bParts = parse(b.version);
+                  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                    const diff = (bParts[i] || 0) - (aParts[i] || 0);
+                    if (diff !== 0) return diff;
+                  }
+                  return 0;
+                })
                 .map((version) => (
                   <div
                     key={version.version}
