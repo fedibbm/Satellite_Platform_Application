@@ -144,7 +144,7 @@ public class WorkflowDefinitionService {
         response.setCreatedAt(workflow.getCreatedAt());
         response.setUpdatedAt(workflow.getUpdatedAt());
         response.setTags(workflow.getTags());
-        response.setIsTemplate(workflow.isTemplate());
+        response.setTemplate(workflow.isTemplate());
         return response;
     }
 }

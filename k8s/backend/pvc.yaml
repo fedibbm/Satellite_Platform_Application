@@ -1,0 +1,17 @@
+# =============================================================================
+# SATELLITE BACKEND - PERSISTENT STORAGE CLAIM
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-storage
+  namespace: satellite-platform
+  labels:
+    app: satellite-backend
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "local-path"
+  resources:
+    requests:
+      storage: 2Gi

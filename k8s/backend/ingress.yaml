@@ -1,0 +1,24 @@
+# =============================================================================
+# SATELLITE BACKEND - INGRESS ROUTING (INGRESS-NGINX)
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend-ingress
+  namespace: satellite-platform
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.satellite.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: satellite-backend
+                port:
+                  number: 8080

@@ -1,0 +1,75 @@
+# Satellite Platform Application — Production-Grade DevOps Learning Roadmap (Local Mirroring)
+
+Target: Zero-cost, local-first enterprise simulation (k3s + Ingress-NGINX + Helm + Docker Jenkins + Trivy + ArgoCD GitOps).
+Hardware: 16 vCPUs, 32GB RAM, Ubuntu Linux (Well-equipped for full stack + Jenkins + k3s).
+
+---
+
+## Architecture Decisions (Agreed via Architectural Review)
+1. Scope: Iterative rollout starting with Core Stack (Spring Boot Backend + MongoDB + Redis), expanding to Next.js Frontend and Python microservices (GEE + Image Processing) once the baseline pipeline is stable.
+2. Cluster: k3s installed with Traefik disabled (`--disable traefik`).
+3. Ingress: Ingress-NGINX installed via Helm (enterprise cloud standard).
+4. Registry: Free cloud container registry (Docker Hub / GHCR) with Kubernetes `imagePullSecrets` (mirrors real-world ECR/GCR access patterns).
+5. Dependencies: Helm charts for third-party infrastructure (Bitnami MongoDB & Redis with PVCs).
+6. Custom Manifests: Clean declarative manifests for custom services (Deployment, Service, ConfigMap, Secret, PVC, Ingress).
+7. CI Engine: Standalone Docker Jenkins (`jenkins/jenkins:lts`) with Docker CLI integration on host.
+8. Pipeline Quality Gates (Enterprise Grade):
+   - Maven Unit Tests (`mvn clean test`)
+   - Container Image Vulnerability Scanning with Trivy (`trivy image`)
+   - Git-SHA image tagging (no raw `:latest`)
+   - Automated manifest repository update with new image tag
+9. CD Engine: GitOps via ArgoCD running inside k3s (declarative automated sync & self-healing).
+10. Ansible: Deferred to final phase for reproducible multi-node cluster provisioning.
+
+---
+
+## Execution Phases
+
+### Phase 1: Containerization & Stack Verification
+- Backend Dockerfile optimization (multi-stage Maven + Eclipse Temurin 17 JRE).
+- Test backend container build and verification using `docker-compose.yml` (MongoDB + Redis + RabbitMQ).
+- Verify `/actuator/health` response.
+
+### Phase 2: k3s Cluster Setup & Ingress-NGINX
+- Install k3s: `curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -`
+- Configure `~/.kube/config` for non-root user.
+- Install Helm 3.
+- Install Ingress-NGINX controller via Helm.
+
+### Phase 3: Infrastructure Services via Helm
+- Add Bitnami Helm repository.
+- Deploy MongoDB (`bitnami/mongodb`) with local-path PVC (5Gi).
+- Deploy Redis (`bitnami/redis`) with local-path PVC (2Gi).
+- Verify internal cluster DNS (`mongodb.satellite-platform.svc.cluster.local`, `redis-master.satellite-platform.svc.cluster.local`).
+
+### Phase 4: Application Kubernetes Manifests (k8s/)
+- Create declarative manifests for Backend:
+  - `namespace.yaml`
+  - `secret.yaml` (Mongo URI with auth, JWT secret)
+  - `configmap.yaml` (Spring profile `prod`, service URLs)
+  - `pvc.yaml` (local-path storage for `/app/upload-dir` and `/app/tmp`)
+  - `deployment.yaml` (Resource requests/limits, Liveness/Readiness actuator probes)
+  - `service.yaml` (ClusterIP: 8080)
+  - `ingress.yaml` (Ingress-NGINX routing `api.satellite.localhost`)
+
+### Phase 5: Jenkins CI Pipeline with Security Gates
+- Run Jenkins container via Docker (`-v /var/run/docker.sock:/var/run/docker.sock`).
+- Install Trivy vulnerability scanner.
+- Implement `Jenkinsfile`:
+  1. Stage: Checkout & Extract Git Commit SHA
+  2. Stage: Maven Test & Package
+  3. Stage: Docker Build with Git SHA tag
+  4. Stage: Security Scan (Trivy image scan for HIGH/CRITICAL vulnerabilities)
+  5. Stage: Push to Registry (Docker Hub / GHCR)
+  6. Stage: Update GitOps manifest repository with new tag
+
+### Phase 6: GitOps Continuous Delivery with ArgoCD
+- Install ArgoCD inside k3s cluster (`argocd` namespace).
+- Expose ArgoCD server UI.
+- Configure ArgoCD Application pointing to the `k8s/` manifests in Git.
+- Verify end-to-end flow: Git push -> Jenkins CI (Test + Scan + Build + Push) -> Manifest update -> ArgoCD automatic sync -> k3s zero-downtime rolling update.
+
+### Phase 7: Expansion to Full System & Ansible
+- Add Next.js Frontend manifests (`satellite.localhost`).
+- Add Python microservices (`gee-service`, `image-processing-app`) with credentials Secret & volume claims.
+- Write Ansible playbooks to automate machine setup and multi-node k3s cluster provisioning.

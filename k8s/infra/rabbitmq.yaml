@@ -1,0 +1,89 @@
+# =============================================================================
+# RABBITMQ 3 (MANAGEMENT) - KUBERNETES INFRASTRUCTURE MANIFEST
+# Namespace: satellite-platform
+# Image: rabbitmq:3-management-alpine (Official, lightweight, web UI included)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. SERVICE: Internal Cluster Networking
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: satellite-platform
+  labels:
+    app: rabbitmq
+spec:
+  type: ClusterIP
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+    - name: management
+      port: 15672
+      targetPort: 15672
+  selector:
+    app: rabbitmq
+
+---
+# -----------------------------------------------------------------------------
+# 2. STATEFULSET: Stateful Pod Management with Persistent Storage
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: satellite-platform
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3-management-alpine
+          ports:
+            - name: amqp
+              containerPort: 5672
+            - name: management
+              containerPort: 15672
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: rabbitmq-user
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: rabbitmq-password
+          volumeMounts:
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  # ---------------------------------------------------------------------------
+  # 3. VOLUME CLAIM TEMPLATE: Automatically claims 2Gi from local-path storage
+  # ---------------------------------------------------------------------------
+  volumeClaimTemplates:
+    - metadata:
+        name: rabbitmq-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: "local-path"
+        resources:
+          requests:
+            storage: 2Gi

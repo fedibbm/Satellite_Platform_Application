@@ -1,0 +1,18 @@
+# =============================================================================
+# SATELLITE BACKEND - CLUSTERIP SERVICE
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: satellite-backend
+  namespace: satellite-platform
+  labels:
+    app: satellite-backend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: satellite-backend

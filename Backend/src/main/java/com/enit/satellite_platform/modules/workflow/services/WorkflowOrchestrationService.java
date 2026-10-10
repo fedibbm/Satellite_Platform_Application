@@ -52,7 +52,7 @@ public class WorkflowOrchestrationService {
             
             // Execute workflow
             Map<String, Object> context = new HashMap<>(parameters != null ? parameters : new HashMap<>());
-            executeNodes(execution.getId(), version, context);
+            executeNodes(execution.getId(), workflowId, userId, version, context);
             
             // Mark as completed
             executionService.updateExecutionStatus(execution.getId(), WorkflowExecutionStatus.COMPLETED.getValue());
@@ -68,7 +68,7 @@ public class WorkflowOrchestrationService {
         }
     }
     
-    private void executeNodes(String executionId, WorkflowVersion version, Map<String, Object> context) {
+    private void executeNodes(String executionId, String workflowId, String userId, WorkflowVersion version, Map<String, Object> context) {
         List<WorkflowNode> nodes = version.getNodes();
         List<WorkflowEdge> edges = version.getEdges();
         

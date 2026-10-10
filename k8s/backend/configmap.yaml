@@ -1,0 +1,25 @@
+# =============================================================================
+# SATELLITE BACKEND - NON-SENSITIVE CONFIGURATION
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: satellite-platform
+  labels:
+    app: satellite-backend
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  BACKEND_PORT: "8080"
+  REDIS_URL: "redis://redis-master:6379"
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "5672"
+  PROJECT_BASE_PATH: "/app"
+  IMAGE_STORAGE_PATH: "/app/upload-dir"
+  TEMP_STORAGE_PATH: "/app/tmp"
+  PYTHON_BASE_URL: "http://localhost:8000"
+  APP1_URL: "http://localhost:8000"
+  JWT_EXPIRATION: "86400000"
+  ADMIN_ENABLED: "true"
+  ADMIN_USERNAME: "admin"
+  ADMIN_EMAIL: "admin@satellite.com"
