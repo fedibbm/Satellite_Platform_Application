@@ -80,7 +80,7 @@ pipeline {
                 echo "🛡️ Scanning project dependencies and secrets with Trivy..."
                 sh '''
                     if command -v trivy >/dev/null 2>&1; then
-                        trivy fs --severity ${SCAN_SEVERITY} --scanners vuln,secret --format table Backend/ || true
+                        trivy fs --timeout 15m --severity ${SCAN_SEVERITY} --scanners vuln,secret --format table Backend/ || true
                     else
                         echo "⚠️ Trivy scanner not found on PATH. Skipping dependency scan."
                     fi
@@ -105,7 +105,7 @@ pipeline {
                 echo "🔬 Scanning container image layers for CVE vulnerabilities..."
                 sh '''
                     if command -v trivy >/dev/null 2>&1; then
-                        trivy image --severity ${SCAN_SEVERITY} --format table ${APP_NAME}:${IMAGE_TAG} || true
+                        trivy image --timeout 15m --severity ${SCAN_SEVERITY} --format table ${APP_NAME}:${IMAGE_TAG} || true
                     else
                         echo "⚠️ Trivy scanner not found on PATH. Skipping image scan."
                     fi
