@@ -1,29 +1,50 @@
-# Dockerfile
-# Use a slim version of Python 3.13 as the base image
-FROM python:3.13-slim
-# Avoid prompts during install
-ENV DEBIAN_FRONTEND=noninteractive
+# =============================================================================
+# SATELLITE IMAGE PROCESSING SERVICE - PRODUCTION DOCKERFILE
+# Stack: Python 3.12-slim, FastAPI, GDAL, Rasterio, Uvicorn
+# =============================================================================
 
-# Install dependencies for GDAL, rasterio, etc.
-RUN apt-get update && apt-get install -y \
+FROM python:3.12-slim
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install GDAL system dependencies and curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gdal-bin \
     libgdal-dev \
-    python3-dev \
     build-essential \
-    && apt-get clean
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set GDAL config path
-ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
-ENV C_INCLUDE_PATH=/usr/include/gdal
+# Set GDAL C/C++ include headers for Python bindings
+ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
+    C_INCLUDE_PATH=/usr/include/gdal
 
-# Set working directory
 WORKDIR /app
 
-# Copy files
+# Security: Create non-root user and group
+RUN groupadd -g 10002 appgroup && \
+    useradd -u 10002 -g appgroup -s /bin/bash -m appuser
+
+# Install Python dependencies first for optimal Docker layer caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./app /app
+# Copy application files and grant permissions to appuser
+COPY --chown=appuser:appgroup ./app /app
+RUN mkdir -p /app/output && chown -R appuser:appgroup /app/output
 
-# Run the FastAPI app
+# Switch to non-root execution
+USER appuser
+
+EXPOSE 8000
+
+# Container healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# Launch FastAPI ASGI server
 CMD ["uvicorn", "REST_API_version2:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -9,8 +9,9 @@ This guide contains the exact step-by-step commands executed to take the Satelli
 2. [Phase 2: Local Kubernetes (k3s) & Ingress Controller Setup](#phase-2-local-kubernetes-k3s--ingress-controller-setup)
 3. [Phase 3: Database & Messaging Tier (MongoDB, Redis, RabbitMQ)](#phase-3-database--messaging-tier)
 4. [Phase 4: Deploying Spring Boot Backend into k3s](#phase-4-deploying-spring-boot-backend-into-k3s)
-5. [Debugging Playbook: Commands & Gotchas Encountered](#debugging-playbook-commands--gotchas-encountered)
-6. [Cluster Health Check (Verify Everything)](#cluster-health-check-verify-everything)
+5. [Phase 5: Native Jenkins CI Pipeline & DevSecOps (Trivy)](#phase-5-native-jenkins-ci-pipeline--devsecops-trivy)
+6. [Debugging Playbook: Commands & Gotchas Encountered](#debugging-playbook-commands--gotchas-encountered)
+7. [Cluster Health Check (Verify Everything)](#cluster-health-check-verify-everything)
 
 ---
 
@@ -212,6 +213,57 @@ curl -H "Host: api.satellite.localhost" http://localhost/actuator/health
 ```json
 {"status":"UP","groups":["liveness","readiness"]}
 ```
+
+---
+
+## Phase 5: Native Jenkins CI Pipeline & DevSecOps (Trivy)
+
+### Step 5.1: Install Native Jenkins on Ubuntu 24.04 (Noble)
+To avoid Docker-in-Docker socket translation complexity, Jenkins runs natively as a systemd service:
+```bash
+# 1. Fetch current 2026 GPG signing key (Ubuntu 24.04 rejects expired 2023 keys)
+sudo wget -O /usr/share/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian/jenkins.io-2026.key
+
+# 2. Add the official LTS repository entry
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+# 3. Install OpenJDK 21, Maven, and Jenkins
+sudo apt-get update
+sudo apt-get install -y openjdk-21-jdk maven jenkins
+```
+
+### Step 5.2: Configure Linux Permissions (Docker Socket Access)
+Grant the `jenkins` system user access to the host Docker daemon:
+```bash
+sudo usermod -aG docker jenkins
+sudo systemctl restart jenkins
+```
+*Note:* Systemd services do NOT inherit newly added Linux groups until the service is restarted.
+
+### Step 5.3: Install Trivy Security Scanner
+```bash
+sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+sudo apt-get update && sudo apt-get install -y trivy
+```
+
+### Step 5.4: Seed Trivy Vulnerability Databases
+Trivy downloads its general CVE DB (~120MB) and Java/Maven index (~935MB) to scan dependencies completely offline:
+```bash
+sudo mkdir -p /var/lib/jenkins/.cache
+sudo cp -r ~/.cache/trivy /var/lib/jenkins/.cache/
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.cache/trivy
+```
+
+### Step 5.5: Create Enterprise Declarative `Jenkinsfile`
+The pipeline is committed directly to Git (`branch: oussema`) and configured in Jenkins UI via "Pipeline script from SCM":
+* **Stage 1: Pre-Flight Tooling Validation:** Validates Java, Maven, Docker, and Trivy versions.
+* **Stage 2: Build & Test (Maven):** `mvn clean package -DskipTests` inside `Backend/`.
+* **Stage 3: Source Security Audit (Trivy FS):** Scans `Backend/pom.xml` dependencies and text files for secrets.
+* **Stage 4: Build Docker Image:** `docker build -t satellite-backend:${BUILD_NUMBER} -t satellite-backend:latest`.
+* **Stage 5: Container Vulnerability Scan (Trivy Image):** Layer-by-layer audit of the container with `--timeout 15m`.
+* **Stage 6: Artifact Verification:** Confirms image registered in the local Docker daemon.
 
 ---
 

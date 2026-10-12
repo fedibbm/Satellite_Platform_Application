@@ -109,6 +109,11 @@ async def _process_analysis(analysis_type: str, analysis_func, custom_args_func=
         logger.error(f"Internal server error during {analysis_type}: {str(e)}")
         return jsonify({'error': f"Internal server error: {str(e)}"}), 500
 
+# --- Health Check Endpoint ---
+@service_bp.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'UP', 'service': 'satellite-gee'}), 200
+
 # --- Individual Analysis Endpoints ---
 
 @service_bp.route('/gee/ndvi', methods=['POST'])

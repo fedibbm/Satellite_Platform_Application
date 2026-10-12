@@ -1,0 +1,19 @@
+# =============================================================================
+# SATELLITE FRONTEND - CLUSTERIP SERVICE SPECIFICATION
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: satellite-frontend
+  namespace: satellite-platform
+  labels:
+    app: satellite-frontend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+  selector:
+    app: satellite-frontend

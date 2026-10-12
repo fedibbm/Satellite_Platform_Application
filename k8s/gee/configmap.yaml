@@ -1,0 +1,20 @@
+# =============================================================================
+# SATELLITE GEE SERVICE - CONFIGMAP SPECIFICATION
+# Non-sensitive runtime configuration decoupled from Deployment
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gee-config
+  namespace: satellite-platform
+  labels:
+    app: gee-service
+data:
+  PYTHONUNBUFFERED: "1"
+  REDIS_HOST: "redis-master"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  GEE_SERVICE_ACCOUNT: "satellite-platform-application@adept-lodge-478616-i2.iam.gserviceaccount.com"
+  GEE_PROJECT_ID: "adept-lodge-478616-i2"
+  GEE_KEY_PATH: "/etc/gee-secrets/key.json"
+  DEFAULT_COLLECTION: "COPERNICUS/S2_HARMONIZED"

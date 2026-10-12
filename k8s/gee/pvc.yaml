@@ -1,0 +1,18 @@
+# =============================================================================
+# SATELLITE GEE SERVICE - PERSISTENT VOLUME CLAIM
+# Storage for downloaded Google Earth Engine satellite imagery
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gee-storage
+  namespace: satellite-platform
+  labels:
+    app: gee-service
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi

@@ -1,0 +1,19 @@
+# =============================================================================
+# SATELLITE IMAGE PROCESSOR - CLUSTERIP SERVICE SPECIFICATION
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: image-processor
+  namespace: satellite-platform
+  labels:
+    app: image-processor
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+  selector:
+    app: image-processor

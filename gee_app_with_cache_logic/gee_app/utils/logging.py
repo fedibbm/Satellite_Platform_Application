@@ -35,20 +35,24 @@ class ColoredFormatter(logging.Formatter):
 
 def configure_logging(app: Flask) -> None:
     log_level = app.config.get('LOG_LEVEL', 'INFO')
-    log_file = os.path.join(app.root_path, '..', 'app.log')
+    log_file = os.path.join(app.root_path, 'app.log')
 
     # Clear existing handlers to prevent duplicates
     logger.handlers.clear()
 
-    file_handler = logging.FileHandler(log_file, encoding='utf-8')
-    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-
+    # Always log to stdout/stderr for container orchestrators (Kubernetes/Docker)
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(ColoredFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    logger.addHandler(console_handler)
+
+    try:
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logger.addHandler(file_handler)
+    except (PermissionError, OSError) as e:
+        logger.warning(f"⚠️ Could not open file handler for {log_file}: {e}. Logging to console only.")
 
     logger.setLevel(getattr(logging, log_level.upper()))
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
 
     if os.environ.get('PYTHONIOENCODING') != 'utf-8':
         logger.warning("⚠️ PYTHONIOENCODING environment variable is not set to UTF-8. Emojis may not display correctly in the console.")

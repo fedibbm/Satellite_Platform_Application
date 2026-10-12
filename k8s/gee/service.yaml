@@ -1,0 +1,19 @@
+# =============================================================================
+# SATELLITE GEE SERVICE - CLUSTERIP SERVICE SPECIFICATION
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: gee-service
+  namespace: satellite-platform
+  labels:
+    app: gee-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+      protocol: TCP
+  selector:
+    app: gee-service
